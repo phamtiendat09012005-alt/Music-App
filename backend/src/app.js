@@ -22,6 +22,8 @@ app.get('/api/health', (req, res) => {
 // Gắn nhánh API xác thực với tiền tố /api/auth
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/songs', require('./routes/songs'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/playlists', require('./routes/playlists'));
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);
 

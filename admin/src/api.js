@@ -2,7 +2,13 @@ import axios from 'axios';
 
 // Bật USE_MOCK = true để test giao diện khi chưa chạy Backend (TV1)
 // Đổi thành false khi đã chạy server Backend ở cổng 5000
-const USE_MOCK = true;
+const USE_MOCK = false;
+
+// Nếu đang dùng Backend thật mà trong trình duyệt còn lưu token giả từ chế độ Mock trước đó -> tự động xoá
+if (!USE_MOCK && localStorage.getItem('token') === 'mock-jwt-token-admin-123456') {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
 
 const api = axios.create({
   baseURL: 'http://localhost:5000/api',
@@ -16,6 +22,22 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Tự động đăng xuất và chuyển về /login nếu token không hợp lệ hoặc hết hạn (401)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes('/auth/login')
+    ) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Dữ liệu mẫu để test khi USE_MOCK = true
 let mockSongs = [
@@ -79,7 +101,7 @@ export const getSongs = async (search = '') => {
   const res = await api.get('/songs', {
     params: search ? { search } : {},
   });
-  return res.data;
+  return res.data.songs || res.data;
 };
 
 // 3. Upload bài hát: POST /api/songs (multipart/form-data)
@@ -121,6 +143,16 @@ export const deleteSong = async (id) => {
     return { message: 'Đã xóa bài hát' };
   }
   const res = await api.delete(`/songs/${id}`);
+  return res.data;
+};
+
+// 5. Cập nhật lời bài hát (.lrc): PUT /api/songs/:id/lyrics
+export const updateSongLyrics = async (id, lyrics) => {
+  if (USE_MOCK) {
+    mockSongs = mockSongs.map((s) => (s._id === id ? { ...s, lyrics } : s));
+    return mockSongs.find((s) => s._id === id);
+  }
+  const res = await api.put(`/songs/${id}/lyrics`, { lyrics });
   return res.data;
 };
 

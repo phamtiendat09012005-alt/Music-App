@@ -10,10 +10,17 @@ class PlaylistDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final playlist = context
-        .watch<PlaylistProvider>()
-        .playlists
-        .firstWhere((p) => p.id == playlistId);
+    final playlists = context.watch<PlaylistProvider>().playlists;
+    final index = playlists.indexWhere((p) => p.id == playlistId);
+
+    if (index == -1) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Playlist')),
+        body: const Center(child: Text('Không tìm thấy Playlist')),
+      );
+    }
+
+    final playlist = playlists[index];
 
     return Scaffold(
       appBar: AppBar(title: Text(playlist.name)),

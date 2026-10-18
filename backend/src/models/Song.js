@@ -31,6 +31,11 @@ const songSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // Nội dung lời bài hát (.lrc hoặc văn bản thuần) lưu trực tiếp trong MongoDB để tải tức thì
+  lyrics: {
+    type: String,
+    default: '',
+  },
   // Thời lượng bài hát tính bằng giây (ví dụ: 215)
   duration: {
     type: Number,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/song.dart';
 import '../widgets/song_tile.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -11,16 +12,37 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  String _query = '';
+  List<Song> _songs = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSongs();
+  }
+
+  Future<void> _fetchSongs([String? keyword]) async {
+    setState(() => _isLoading = true);
+    try {
+      final results = await ApiService().getSongs(search: keyword);
+      if (mounted) {
+        setState(() {
+          _songs = results;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _songs = [];
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredSongs = mockSongs.where((song) {
-      final q = _query.toLowerCase();
-      return song.title.toLowerCase().contains(q) ||
-          song.artist.toLowerCase().contains(q);
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(title: const Text('Tìm kiếm')),
       body: Column(
@@ -28,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              onChanged: (value) => setState(() => _query = value),
+              onChanged: _fetchSongs,
               style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
                 hintText: 'Tên bài hát hoặc nghệ sĩ...',
@@ -44,14 +66,16 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           Expanded(
-            child: filteredSongs.isEmpty
-                ? const Center(
-                    child: Text('Không tìm thấy bài hát', style: TextStyle(color: AppTheme.textGrey)),
-                  )
-                : ListView.builder(
-                    itemCount: filteredSongs.length,
-                    itemBuilder: (context, index) => SongTile(song: filteredSongs[index]),
-                  ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                : _songs.isEmpty
+                    ? const Center(
+                        child: Text('Không tìm thấy bài hát', style: TextStyle(color: AppTheme.textGrey)),
+                      )
+                    : ListView.builder(
+                        itemCount: _songs.length,
+                        itemBuilder: (context, index) => SongTile(song: _songs[index]),
+                      ),
           ),
         ],
       ),

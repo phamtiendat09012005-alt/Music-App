@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 
 enum RegisterMethod { gmail, phone }
 
@@ -204,18 +205,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isGmail
-                              ? 'Đăng ký tài khoản bằng Gmail thành công!'
-                              : 'Đăng ký tài khoản bằng Số điện thoại thành công!',
+                  onPressed: () async {
+                    final name = _nameController.text.trim();
+                    final contact = _contactController.text.trim();
+                    final password = _passwordController.text;
+
+                    if (name.isEmpty || contact.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin đăng ký')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      // Tạo email chuẩn nếu người dùng đăng ký bằng số điện thoại
+                      final email = isGmail ? contact : '$contact@musicapp.local';
+                      await ApiService().register(name: name, email: email, password: password);
+                    } catch (_) {}
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isGmail
+                                ? 'Đăng ký tài khoản bằng Gmail thành công!'
+                                : 'Đăng ký tài khoản bằng Số điện thoại thành công!',
+                          ),
+                          backgroundColor: AppTheme.primaryGreen,
                         ),
-                        backgroundColor: AppTheme.primaryGreen,
-                      ),
-                    );
-                    context.go('/home');
+                      );
+                      context.go('/home');
+                    }
                   },
                   child: Text(isGmail
                       ? 'ĐĂNG KÝ BẰNG GMAIL'

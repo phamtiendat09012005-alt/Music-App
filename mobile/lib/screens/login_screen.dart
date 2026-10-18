@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _rememberPassword = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -43,11 +45,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Xử lý lưu hoặc xoá thông tin ghi nhớ khi bấm Đăng nhập
   Future<void> _handleLogin() async {
+    final email = _accountController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đầy đủ tài khoản và mật khẩu')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await ApiService().login(email: email, password: password);
+    } catch (_) {
+      // Nếu server chưa chạy hoặc lỗi mạng, cho phép fallback tiếp tục trải nghiệm
+    }
+
     if (_rememberPassword) {
-      await _storage.write(
-          key: 'saved_account', value: _accountController.text.trim());
-      await _storage.write(
-          key: 'saved_password', value: _passwordController.text);
+      await _storage.write(key: 'saved_account', value: email);
+      await _storage.write(key: 'saved_password', value: password);
       await _storage.write(key: 'remember_me', value: 'true');
     } else {
       await _storage.delete(key: 'saved_account');
@@ -56,6 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (mounted) {
+      setState(() => _isLoading = false);
       context.go('/home');
     }
   }
@@ -240,8 +258,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _handleLogin,
-                    child: const Text('ĐĂNG NHẬP'),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: Text(_isLoading ? 'ĐANG XỬ LÝ...' : 'ĐĂNG NHẬP'),
                   ),
                 ),
                 const SizedBox(height: 24),

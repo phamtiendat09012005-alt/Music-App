@@ -8,6 +8,8 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`MongoDB Atlas đã kết nối thành công: ${conn.connection.host}`);
+    const seedDatabaseIfEmpty = require('../seedData');
+    await seedDatabaseIfEmpty();
   } catch (error) {
     console.error(`Lỗi kết nối MongoDB: ${error.message}`);
     process.exit(1);

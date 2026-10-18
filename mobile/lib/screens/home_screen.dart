@@ -5,17 +5,57 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../widgets/song_tile.dart';
 import '../core/theme.dart';
+import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<Song> _songs = [];
+  bool _isLoading = true;
+  String? _errorMsg;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSongs();
+  }
+
+  Future<void> _fetchSongs() async {
+    final playerProvider = context.read<PlayerProvider>();
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+    });
+    try {
+      final songs = await ApiService().getSongs();
+      if (mounted) {
+        setState(() {
+          _songs = songs;
+          _isLoading = false;
+        });
+        playerProvider.setInitialQueue(songs);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMsg =
+              'Không kết nối được tới Backend (${ApiService.baseUrl}).\nHãy chạy "npm run dev" trong thư mục backend.';
+        });
+      }
+    }
+  }
+
   void _showArtistSongsSheet(BuildContext context, ArtistItem artist) {
-    final artistSongs = mockSongs
-        .where(
-            (s) => s.artist.toLowerCase().contains(artist.name.toLowerCase()))
-        .toList();
+    final artistSongs =
+        _songs.where((s) => s.hasArtist(artist.name)).toList();
     final displaySongs =
-        artistSongs.isNotEmpty ? artistSongs : mockSongs.take(3).toList();
+        artistSongs.isNotEmpty ? artistSongs : _songs.take(3).toList();
 
     showModalBottomSheet(
       context: context,
@@ -106,10 +146,50 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // Tổng hợp danh sách Nghệ sĩ thịnh hành trực tiếp từ các bài hát trên MongoDB
+  // Tự động tách từng nghệ sĩ nếu 1 bài hát có nhiều nghệ sĩ hợp tác (VD: "Sơn Tùng M-TP, RHYDER")
+  List<ArtistItem> _getTrendingArtists(List<Song> sortedSongs) {
+    final Map<String, List<Song>> artistSongsMap = {};
+    final Map<String, String> displayNames = {};
+
+    for (final song in sortedSongs) {
+      for (final singleArtist in song.artistList) {
+        final key = singleArtist.toLowerCase();
+        displayNames.putIfAbsent(key, () => singleArtist);
+        final list = artistSongsMap.putIfAbsent(key, () => []);
+        if (!list.any((s) => s.id == song.id)) {
+          list.add(song);
+        }
+      }
+    }
+
+    final entries = artistSongsMap.entries.toList()
+      ..sort((a, b) {
+        final totalPlayA =
+            a.value.fold<int>(0, (sum, item) => sum + item.playCount);
+        final totalPlayB =
+            b.value.fold<int>(0, (sum, item) => sum + item.playCount);
+        return totalPlayB.compareTo(totalPlayA);
+      });
+
+    return entries.map((entry) {
+      final firstWithCover = entry.value.firstWhere(
+        (s) => s.coverUrl.isNotEmpty,
+        orElse: () => entry.value.first,
+      );
+      return ArtistItem(
+        name: displayNames[entry.key] ?? entry.key,
+        avatarUrl: firstWithCover.coverUrl,
+        role: 'Nghệ sĩ • ${entry.value.length} bài hát',
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final trendingSongs = List<Song>.from(mockSongs)
+    final trendingSongs = List<Song>.from(_songs)
       ..sort((a, b) => b.playCount.compareTo(a.playCount));
+    final trendingArtists = _getTrendingArtists(trendingSongs);
 
     return Scaffold(
       appBar: AppBar(
@@ -123,9 +203,40 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+            )
+          : _errorMsg != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_off,
+                            size: 60, color: AppTheme.textGrey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMsg!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppTheme.textGrey),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _fetchSongs,
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
+                  color: AppTheme.primaryGreen,
+                  onRefresh: _fetchSongs,
+                  child: ListView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    children: [
           // 1. NHỮNG BÀI HÁT THỊNH HÀNH
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -215,7 +326,7 @@ class HomeScreen extends StatelessWidget {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: Colors.black.withValues(alpha: 0.5),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -344,7 +455,7 @@ class HomeScreen extends StatelessWidget {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withValues(alpha: 0.4),
                                 blurRadius: 10,
                                 offset: const Offset(0, 6),
                               ),
@@ -411,9 +522,10 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-          ...mockSongs.map((song) => SongTile(song: song)),
+          ..._songs.map((song) => SongTile(song: song)),
         ],
       ),
-    );
+    ),
+  );
   }
 }

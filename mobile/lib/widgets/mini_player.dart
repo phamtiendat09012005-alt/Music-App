@@ -14,10 +14,15 @@ class MiniPlayer extends StatelessWidget {
 
     if (song == null) return const SizedBox.shrink();
 
+    final lines = player.currentLyricLines;
+    final activeIdx = player.activeLyricIndex;
+    final currentLyricText =
+        (activeIdx >= 0 && activeIdx < lines.length) ? lines[activeIdx].text : '';
+
     return GestureDetector(
       onTap: () => context.push('/now-playing'),
       child: Container(
-        height: 66,
+        height: 68,
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
@@ -49,40 +54,47 @@ class MiniPlayer extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    song.title,
+                    '${song.title} • ${song.artist}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 2),
                   Text(
-                    song.artist,
-                    style:
-                        const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+                    currentLyricText.isNotEmpty
+                        ? '♪ $currentLyricText'
+                        : song.artist,
+                    style: const TextStyle(
+                      color: AppTheme.primaryGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             IconButton(
-              tooltip: 'Lặp bài',
-              icon: Icon(
-                player.isRepeat
-                    ? Icons.repeat_one_rounded
-                    : Icons.repeat_rounded,
-                color:
-                    player.isRepeat ? AppTheme.primaryGreen : AppTheme.textGrey,
-                size: 20,
+              tooltip: 'Xem lời bài hát (.LRC)',
+              icon: const Icon(
+                Icons.lyrics_outlined,
+                color: AppTheme.primaryGreen,
+                size: 22,
               ),
-              onPressed: () => player.toggleRepeat(),
+              onPressed: () {
+                player.setShowLyrics(true);
+                context.push('/now-playing');
+              },
             ),
             IconButton(
               tooltip: 'Bài trước',
               icon: const Icon(Icons.skip_previous_rounded,
-                  color: Colors.white, size: 28),
+                  color: Colors.white, size: 26),
               onPressed: () => player.previousSong(),
             ),
             IconButton(
@@ -99,7 +111,7 @@ class MiniPlayer extends StatelessWidget {
             IconButton(
               tooltip: 'Bài tiếp theo',
               icon: const Icon(Icons.skip_next_rounded,
-                  color: Colors.white, size: 28),
+                  color: Colors.white, size: 26),
               onPressed: () => player.nextSong(),
             ),
           ],
