@@ -7,6 +7,21 @@ Dự án gồm 3 phân hệ chính hoạt động đồng bộ trên **MongoDB A
 
 ---
 
+## ⚙️ Cấu Hình Môi Trường Backend (Bắt buộc trước khi chạy)
+
+Tạo file `.env` nằm trực tiếp bên trong thư mục `backend/` (`backend/.env`) với nội dung cấu hình sau:
+
+```env
+PORT=5000
+MONGO_URI=mongodb+srv://huyho150705_db_user:huyho150705@cluster0.9kj6o7e.mongodb.net/music_app?retryWrites=true&w=majority
+JWT_SECRET=music_app_secret_key_2026
+CLOUDINARY_CLOUD_NAME=dajlkgzq
+CLOUDINARY_API_KEY=387734791793743
+CLOUDINARY_API_SECRET=vgkzCjs8Fv_Q6O7IOuDoKVaoHmI
+```
+
+---
+
 ## 🚀 Thứ Tự Khởi Chạy Dự Án (Từ A - Z)
 
 Để hệ thống hoạt động trơn tru, bạn hãy mở **3 cửa sổ Terminal riêng biệt** và chạy đúng theo thứ tự **Bước 1 $\rightarrow$ Bước 2 $\rightarrow$ Bước 3** dưới đây:
@@ -22,7 +37,7 @@ cd backend
 npm install
 npm run dev
 ```
-* **Dấu hiệu chạy thành công:**
+- **Dấu hiệu chạy thành công:**
   * `Server đang chạy ở cổng 5000`
   * `MongoDB Atlas đã kết nối thành công`
   * *(Trong lần chạy đầu tiên nếu DB trống, Backend sẽ tự động tạo sẵn tài khoản Admin `admin@music.com` / `123456`, 8 bài hát và 2 Playlist mẫu lên MongoDB Atlas).*
@@ -38,8 +53,8 @@ cd admin
 npm install
 npm run dev
 ```
-* Mở trình duyệt tại đường link hiển thị trên terminal (thường là `http://localhost:5173`).
-* **Thông tin đăng nhập Admin:**
+- Mở trình duyệt tại đường link hiển thị trên terminal (thường là `http://localhost:5173`).
+- **Thông tin đăng nhập Admin:**
   * **Email:** `admin@music.com`
   * **Mật khẩu:** `123456`
 
@@ -64,8 +79,3 @@ Sau khi Backend đã chạy ở Bước 1, bạn khởi chạy ứng dụng di �
 ## 🔄 Kiểm Tra Tính Đồng Bộ Giữa 3 Phân Hệ
 1. Vào **Web Admin** (`http://localhost:5173`), thử tải lên 1 bài hát mới hoặc xóa 1 bài hát.
 2. Qua **Mobile App** trên máy ảo Android, tại màn hình **Khám phá (Trang chủ)**, dùng chuột **kéo từ trên xuống (Pull-to-refresh)** $\rightarrow$ Danh sách bài hát mới nhất từ MongoDB sẽ lập tức xuất hiện!
-
-## 🔄 Kiểm Tra Tính Đồng Bộ Giữa 3 Phân Hệ
-1. Vào **Web Admin** (`http://localhost:5173`), thử tải lên 1 bài hát mới hoặc xóa 1 bài hát.
-2. Qua **Mobile App** trên máy ảo Android, tại màn hình **Khám phá (Trang chủ)**, dùng chuột **kéo từ trên xuống (Pull-to-refresh)** $\rightarrow$ Danh sách bài hát mới nhất từ MongoDB sẽ lập tức xuất hiện!
-
