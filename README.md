@@ -1,4 +1,4 @@
-# 🎵 Music App - Hệ Thống Ứng Dụng Nghe Nhạc (Huy)
+# 🎵 Music App - Hệ Thống Ứng Dụng Nghe Nhạc 
 
 Dự án gồm 3 phân hệ chính hoạt động đồng bộ trên **MongoDB Atlas** & **Cloudinary**:
 1. **`backend/`**: RESTful API (Node.js, Express, MongoDB Atlas, Cloudinary, JWT, Multer).
