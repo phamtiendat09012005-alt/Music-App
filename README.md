@@ -1,4 +1,4 @@
-# 🎵 Music App - Hệ Thống Ứng Dụng Nghe Nhạc (Huy)
+# 🎵 Music App - Hệ Thống Ứng Dụng Nghe Nhạc 
 
 Dự án gồm 3 phân hệ chính hoạt động đồng bộ:
 1. **`backend/`**: RESTful API (Node.js, Express, MongoDB Atlas, Cloudinary, JWT, Multer).
@@ -141,6 +141,37 @@ flutter run
   2. Test trên **Điện thoại thật** hoặc trên trình duyệt **Chrome (`flutter run -d chrome`)** để âm thanh trong trẻo 100%.
 
 ---
+
+## ⚡ CÁCH CÀI TẤT CẢ THƯ VIỆN & MÔI TRƯỜNG TRỰC TIẾP TRÊN VS CODE
+
+Nếu bạn muốn làm việc hoàn toàn trong **VS Code** (không cần mở nhiều cửa sổ terminal hay thao tác thủ công từng thư mục), hãy làm theo các bước cực nhanh sau:
+
+### 1. Cài Extension cần thiết trên VS Code (Chỉ làm lần đầu)
+Mở mục **Extensions** (`Ctrl + Shift + X`) trên thanh bên trái VS Code và cài 2 tiện ích:
+1. **Flutter** (của *Dart Code*): Tự động cài luôn tiện ích Dart, hỗ trợ chạy và debug app Flutter bằng phím `F5`, tự động phát hiện thiết bị và máy ảo Android.
+2. **ES7+ React/Redux/React-Native snippets**: Hỗ trợ code React cho phần Web Admin.
+
+---
+
+### 2. Một lệnh cài đặt toàn bộ thư viện (All-In-One Command)
+Mở Terminal tích hợp ngay trong VS Code bằng phím tắt **`Ctrl + ~`** (hoặc menu **Terminal $\rightarrow$ New Terminal**) tại thư mục gốc của dự án (`Music-App`), sau đó dán duy nhất 1 dòng lệnh này rồi nhấn **Enter**:
+
+```powershell
+npm --prefix backend install; npm --prefix admin install; cd mobile; flutter pub get; cd ..
+```
+
+> 🎯 **Lệnh này tự động làm gì?**
+> - Tự động cài đặt sạch sẽ tất cả gói cho **`backend/`**.
+> - Tự động cài đặt toàn bộ dependencies cho **`admin/`**.
+> - Tự động tải đầy đủ thư viện Flutter cho **`mobile/`**.
+
+---
+
+### 3. Khởi chạy trực tiếp từ Terminal VS Code
+Bạn có thể chia màn hình Terminal trong VS Code thành nhiều cột (bấm biểu tượng **Split Terminal `|`** hoặc dấu `+` ở góc trên tab Terminal) để chạy cả 3 cùng lúc:
+- **Cột 1**: `cd backend; npm run dev`
+- **Cột 2**: `cd admin; npm run dev`
+- **Cột 3**: `cd mobile; flutter run` *(hoặc bấm phím `F5` trên VS Code để chạy bằng Flutter Debugger)*.
 
 ## 📁 Cấu Trúc Thư Mục Dự Án
 ```text
