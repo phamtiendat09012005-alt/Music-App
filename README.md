@@ -27,17 +27,12 @@ Khi clone từ GitHub về máy khác, các thư mục thư viện (`node_module
 
 ```env
 PORT=5000
-# Đường dẫn kết nối MongoDB Atlas (Cluster của bạn hoặc dùng chung)
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/music-app?retryWrites=true&w=majority
+MONGO_URI=mongodb+srv://huyho150705_db_user:huyho150705@cluster0.9kj6o7e.mongodb.net/music_app?retryWrites=true&w=majority
+JWT_SECRET=music_app_secret_key_2026
+CLOUDINARY_CLOUD_NAME=dajlkgzq
+CLOUDINARY_API_KEY=387734791793743
+CLOUDINARY_API_SECRET=vgkzCjs8Fv_Q6O7IOuDoKVaoHmI
 
-# Mã bí mật tạo token đăng nhập JWT
-JWT_SECRET=huy_music_super_secret_key_2026
-
-# Cấu hình Cloudinary để tải ảnh bìa và file nhạc (Lấy tại https://cloudinary.com)
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-```
 
 ---
 
