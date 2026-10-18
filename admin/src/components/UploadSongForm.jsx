@@ -6,10 +6,40 @@ export default function UploadSongForm({ onUploadSuccess }) {
   const [artist, setArtist] = useState('');
   const [genre, setGenre] = useState('Pop');
   const [audioFile, setAudioFile] = useState(null);
+  const [duration, setDuration] = useState(0);
   const [coverFile, setCoverFile] = useState(null);
   const [lyricsFile, setLyricsFile] = useState(null);
+  const [lyricsText, setLyricsText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const handleLyricsFileChange = (file) => {
+    setLyricsFile(file || null);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (typeof ev.target?.result === 'string') {
+          setLyricsText(ev.target.result);
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+  };
+
+  const handleAudioChange = (file) => {
+    setAudioFile(file);
+    if (file) {
+      const audio = new Audio();
+      const objectUrl = URL.createObjectURL(file);
+      audio.src = objectUrl;
+      audio.onloadedmetadata = () => {
+        setDuration(Math.round(audio.duration) || 0);
+        URL.revokeObjectURL(objectUrl);
+      };
+    } else {
+      setDuration(0);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,15 +50,26 @@ export default function UploadSongForm({ onUploadSuccess }) {
       return;
     }
 
+    // Chuẩn hóa danh sách nghệ sĩ (VD: "Sơn Tùng M-TP ,  RHYDER" -> "Sơn Tùng M-TP, RHYDER")
+    const normalizedArtist = artist
+      .split(/\s*(?:,|;|(?:\b(?:ft|feat)\.?\b)|&)\s*/i)
+      .map((a) => a.trim())
+      .filter(Boolean)
+      .join(', ');
+
     // Đóng gói dữ liệu dạng multipart/form-data đúng Hợp đồng API Mục 8
     const formData = new FormData();
     formData.append('title', title.trim());
-    formData.append('artist', artist.trim());
+    formData.append('artist', normalizedArtist);
     formData.append('genre', genre.trim());
+    formData.append('duration', duration || 0);
     formData.append('audio', audioFile);
     formData.append('cover', coverFile);
     if (lyricsFile) {
       formData.append('lyrics', lyricsFile);
+    }
+    if (lyricsText.trim()) {
+      formData.append('lyricsText', lyricsText.trim());
     }
 
     try {
@@ -41,6 +82,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
       setAudioFile(null);
       setCoverFile(null);
       setLyricsFile(null);
+      setLyricsText('');
       e.target.reset();
       onUploadSuccess();
     } catch (err) {
@@ -101,11 +143,11 @@ export default function UploadSongForm({ onUploadSuccess }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
-              Nghệ sĩ (artist) *
+              Nghệ sĩ (artist - cách nhau dấu phẩy nếu nhiều người) *
             </label>
             <input
               type="text"
-              placeholder="Nhập tên nghệ sĩ..."
+              placeholder="VD: Sơn Tùng M-TP, RHYDER..."
               value={artist}
               onChange={(e) => setArtist(e.target.value)}
               style={inputStyle}
@@ -141,7 +183,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
             <input
               type="file"
               accept="audio/*"
-              onChange={(e) => setAudioFile(e.target.files[0])}
+              onChange={(e) => handleAudioChange(e.target.files[0])}
               style={inputStyle}
             />
           </div>
@@ -160,15 +202,33 @@ export default function UploadSongForm({ onUploadSuccess }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
-              Lời bài hát đồng bộ (.lrc - Tùy chọn)
+              File lời bài hát (.lrc / .srt / .txt - Tùy chọn)
             </label>
             <input
               type="file"
-              accept=".lrc,text/plain"
-              onChange={(e) => setLyricsFile(e.target.files[0])}
+              accept=".lrc,.srt,.vtt,.txt,text/plain"
+              onChange={(e) => handleLyricsFileChange(e.target.files[0])}
               style={inputStyle}
             />
           </div>
+        </div>
+
+        <div style={{ marginBottom: '18px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            Nội dung lời bài hát (Hỗ trợ chuẩn <code>.LRC [mm:ss.xx]</code>, chuẩn <code>.SRT (00:00:04,500 --&gt; 00:00:10,000)</code> hoặc văn bản thường)
+          </label>
+          <textarea
+            rows={4}
+            placeholder={"Hỗ trợ .LRC:\n[00:00.00] ♪ Nhạc dạo đầu...\n\nHoặc .SRT:\n1\n00:00:04,500 --> 00:00:10,000\nDòng lời bài hát thứ nhất..."}
+            value={lyricsText}
+            onChange={(e) => setLyricsText(e.target.value)}
+            style={{
+              ...inputStyle,
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              resize: 'vertical',
+            }}
+          />
         </div>
 
         <button
