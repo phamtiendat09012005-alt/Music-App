@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/favorite_provider.dart';
@@ -33,16 +32,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     }
 
     final isFav = favProvider.isFavorite(song.id);
+    final maxDuration = player.totalDuration.toDouble();
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.keyboard_arrow_down, size: 32),
+          tooltip: 'Thu nhỏ',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          song.genre.toUpperCase(),
-          style: const TextStyle(fontSize: 12, letterSpacing: 1.5, color: AppTheme.textGrey),
+        title: Column(
+          children: [
+            const Text(
+              'ĐANG PHÁT TỪ DANH SÁCH',
+              style: TextStyle(
+                  fontSize: 10, letterSpacing: 1.2, color: AppTheme.textGrey),
+            ),
+            Text(
+              song.genre.toUpperCase(),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+          ],
         ),
         centerTitle: true,
         actions: [
@@ -60,23 +73,32 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Column(
           children: [
-            // Khu vực hiển thị Ảnh bìa hoặc Lời bài hát đồng bộ
             Expanded(
               child: Center(
                 child: _showLyrics
                     ? const LyricsView()
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                          imageUrl: song.coverUrl,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+                    : ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(maxWidth: 360, maxHeight: 360),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            song.coverUrl,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: AppTheme.cardGrey,
+                              child: const Icon(Icons.music_note,
+                                  size: 80, color: AppTheme.primaryGreen),
+                            ),
+                          ),
                         ),
                       ),
               ),
             ),
             const SizedBox(height: 24),
-            // Tên bài hát, nghệ sĩ & nút yêu thích
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -86,14 +108,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     children: [
                       Text(
                         song.title,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         song.artist,
-                        style: const TextStyle(fontSize: 16, color: AppTheme.textGrey),
+                        style: const TextStyle(
+                            fontSize: 16, color: AppTheme.textGrey),
                       ),
                     ],
                   ),
@@ -109,18 +133,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Thanh trượt thời gian (Seek bar)
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                 trackHeight: 4,
-                activeTrackColor: Colors.white,
+                activeTrackColor: AppTheme.primaryGreen,
                 inactiveTrackColor: AppTheme.cardGrey,
                 thumbColor: Colors.white,
               ),
               child: Slider(
-                value: player.currentPosition.clamp(0.0, song.duration.toDouble()),
-                max: song.duration.toDouble(),
+                value: player.currentPosition.clamp(0.0, maxDuration),
+                max: maxDuration > 0 ? maxDuration : 1.0,
                 onChanged: (val) => player.seek(val),
               ),
             ),
@@ -131,30 +154,37 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 children: [
                   Text(
                     _formatDuration(player.currentPosition.toInt()),
-                    style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+                    style:
+                        const TextStyle(color: AppTheme.textGrey, fontSize: 12),
                   ),
                   Text(
-                    _formatDuration(song.duration),
-                    style: const TextStyle(color: AppTheme.textGrey, fontSize: 12),
+                    _formatDuration(player.totalDuration),
+                    style:
+                        const TextStyle(color: AppTheme.textGrey, fontSize: 12),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            // Bộ nút điều khiển: Shuffle, Prev, Play/Pause, Next, Repeat
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
+                  tooltip: 'Phát ngẫu nhiên',
                   icon: Icon(
                     Icons.shuffle,
-                    color: player.isShuffle ? AppTheme.primaryGreen : AppTheme.textGrey,
+                    color: player.isShuffle
+                        ? AppTheme.primaryGreen
+                        : AppTheme.textGrey,
+                    size: 26,
                   ),
                   onPressed: () => player.toggleShuffle(),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.skip_previous, size: 38),
-                  onPressed: () {},
+                  tooltip: 'Bài trước (Back)',
+                  icon: const Icon(Icons.skip_previous_rounded,
+                      size: 42, color: Colors.white),
+                  onPressed: () => player.previousSong(),
                 ),
                 GestureDetector(
                   onTap: () => player.togglePlayPause(),
@@ -166,20 +196,32 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      player.isPlaying ? Icons.pause : Icons.play_arrow,
+                      player.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       color: Colors.black,
-                      size: 38,
+                      size: 40,
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.skip_next, size: 38),
-                  onPressed: () {},
+                  tooltip: 'Bài tiếp theo (Skip)',
+                  icon: const Icon(Icons.skip_next_rounded,
+                      size: 42, color: Colors.white),
+                  onPressed: () => player.nextSong(),
                 ),
                 IconButton(
+                  tooltip: player.isRepeat
+                      ? 'Đang lặp lại bài này'
+                      : 'Lặp lại bài hát',
                   icon: Icon(
-                    Icons.repeat,
-                    color: player.isRepeat ? AppTheme.primaryGreen : AppTheme.textGrey,
+                    player.isRepeat
+                        ? Icons.repeat_one_rounded
+                        : Icons.repeat_rounded,
+                    color: player.isRepeat
+                        ? AppTheme.primaryGreen
+                        : AppTheme.textGrey,
+                    size: 26,
                   ),
                   onPressed: () => player.toggleRepeat(),
                 ),

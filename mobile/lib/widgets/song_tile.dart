@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../providers/favorite_provider.dart';
@@ -20,16 +20,23 @@ class SongTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      onTap: () => playerProvider.playSong(song),
+      onTap: () {
+        playerProvider.playSong(song);
+        context.push('/now-playing');
+      },
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: CachedNetworkImage(
-          imageUrl: song.coverUrl,
+        child: Image.network(
+          song.coverUrl,
           width: 50,
           height: 50,
           fit: BoxFit.cover,
-          placeholder: (context, url) => Container(color: AppTheme.cardGrey),
-          errorWidget: (context, url, error) => const Icon(Icons.music_note),
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 50,
+            height: 50,
+            color: AppTheme.cardGrey,
+            child: const Icon(Icons.music_note, color: AppTheme.primaryGreen),
+          ),
         ),
       ),
       title: Text(
@@ -49,6 +56,12 @@ class SongTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (isPlayingThis)
+            const Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child:
+                  Icon(Icons.equalizer, color: AppTheme.primaryGreen, size: 20),
+            ),
           IconButton(
             icon: Icon(
               isFav ? Icons.favorite : Icons.favorite_border,
@@ -56,7 +69,6 @@ class SongTile extends StatelessWidget {
             ),
             onPressed: () => favProvider.toggleFavorite(song),
           ),
-          const Icon(Icons.more_vert, color: AppTheme.textGrey),
         ],
       ),
     );
