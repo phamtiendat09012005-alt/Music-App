@@ -105,6 +105,20 @@ class ApiService {
         .toList();
   }
 
+  // 4b. Lấy chi tiết 1 bài hát mới nhất trực tiếp từ MongoDB (GET /api/songs/:id)
+  Future<Song?> getSongById(String songId) async {
+    if (songId.trim().isEmpty) return null;
+    try {
+      final response = await _dio.get('/songs/$songId');
+      if (response.data is Map) {
+        return Song.fromJson(Map<String, dynamic>.from(response.data as Map));
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // 5. Tăng lượt nghe trên MongoDB khi phát bài hát
   Future<void> recordPlay(String songId) async {
     try {
@@ -160,6 +174,26 @@ class ApiService {
       return response.data ?? '';
     } catch (_) {
       return '';
+    }
+  }
+
+  // 12. Lấy danh sách nghệ sĩ & ảnh đại diện chân dung từ MongoDB
+  Future<List<ArtistItem>> getArtists({String? search}) async {
+    try {
+      final query = (search ?? '').trim();
+      final response = await _dio.get('/artists', queryParameters: {
+        if (query.isNotEmpty) 'search': query,
+      });
+      final data = response.data;
+      final List list =
+          data is Map ? (data['artists'] ?? []) : (data is List ? data : []);
+      return list
+          .whereType<Map>()
+          .map((item) => ArtistItem.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      debugPrint('Lỗi lấy danh sách nghệ sĩ: $e');
+      return [];
     }
   }
 }

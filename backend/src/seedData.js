@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const User = require('./models/User');
 const Song = require('./models/Song');
 const Playlist = require('./models/Playlist');
+const Artist = require('./models/Artist');
 
 const initialSongs = [
   {
@@ -149,6 +150,55 @@ const seedDatabaseIfEmpty = async () => {
       for (const s of songsWithoutLyrics) {
         s.lyrics = buildSampleLrc(s.title, s.artist);
         await s.save();
+      }
+    }
+
+    // 4. Khởi tạo sẵn ảnh đại diện chân dung chuẩn cho các nghệ sĩ nổi bật nếu chưa có
+    const defaultArtistProfiles = [
+      {
+        name: 'Sơn Tùng M-TP',
+        avatarUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Son_Tung_M-TP_1_%282017%29.png/500px-Son_Tung_M-TP_1_%282017%29.png',
+        bio: 'Ca sĩ, nhạc sĩ, nhà sản xuất âm nhạc hàng đầu V-Pop.',
+      },
+      {
+        name: 'RHYDER',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80',
+        bio: 'Ca sĩ, Rapper tài năng của làn sóng âm nhạc trẻ.',
+      },
+      {
+        name: 'Hoàng Thùy Linh',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80',
+        bio: 'Nữ ca sĩ kết hợp độc đáo giữa âm nhạc dân gian đương đại và EDM.',
+      },
+      {
+        name: 'SOOBIN',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80',
+        bio: 'Hoàng tử R&B/Ballad với chất giọng ngọt ngào đầy cảm xúc.',
+      },
+      {
+        name: 'HIEUTHUHAI',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=80',
+        bio: 'Rapper nổi bật với phong cách hiện đại và nhiều bản hit triệu view.',
+      },
+      {
+        name: 'MONO',
+        avatarUrl:
+          'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&auto=format&fit=crop&q=80',
+        bio: 'Nghệ sĩ trẻ thế hệ mới với phong cách Pop R&B cuốn hút.',
+      },
+    ];
+
+    for (const item of defaultArtistProfiles) {
+      const exists = await Artist.findOne({
+        name: { $regex: new RegExp(`^${item.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      });
+      if (!exists) {
+        await Artist.create(item);
       }
     }
   } catch (error) {

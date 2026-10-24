@@ -111,7 +111,6 @@ export const uploadSong = async (formData) => {
     const coverFile = formData.get('cover');
     const lyricsFile = formData.get('lyrics');
 
-    // Tạo URL tạm thời trực tiếp từ file thật bạn vừa chọn trên máy tính
     const localAudioUrl = audioFile ? URL.createObjectURL(audioFile) : '';
     const localCoverUrl = coverFile ? URL.createObjectURL(coverFile) : '';
     const localLyricsUrl = lyricsFile ? URL.createObjectURL(lyricsFile) : '';
@@ -121,8 +120,8 @@ export const uploadSong = async (formData) => {
       title: formData.get('title'),
       artist: formData.get('artist'),
       genre: formData.get('genre') || 'Pop',
-      audioUrl: localAudioUrl,   // Phát đúng file .mp3 vừa chọn!
-      coverUrl: localCoverUrl,   // Hiện đúng ảnh bìa vừa chọn!
+      audioUrl: localAudioUrl,
+      coverUrl: localCoverUrl,
       lyricsUrl: localLyricsUrl,
       duration: 210,
       playCount: 0,
@@ -153,6 +152,66 @@ export const updateSongLyrics = async (id, lyrics) => {
     return mockSongs.find((s) => s._id === id);
   }
   const res = await api.put(`/songs/${id}/lyrics`, { lyrics });
+  return res.data;
+};
+
+// 5b. Chỉnh sửa & bổ sung các phần còn thiếu vào bài hát đã thêm trước đó: PUT /api/songs/:id
+export const updateSong = async (id, formData) => {
+  if (USE_MOCK) {
+    mockSongs = mockSongs.map((s) =>
+      s._id === id
+        ? {
+            ...s,
+            title: formData.get('title') || s.title,
+            artist: formData.get('artist') || s.artist,
+            genre: formData.get('genre') || s.genre,
+            lyrics:
+              formData.get('lyricsText') !== null
+                ? formData.get('lyricsText')
+                : s.lyrics,
+          }
+        : s
+    );
+    return mockSongs.find((s) => s._id === id);
+  }
+  const res = await api.put(`/songs/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
+
+// 6. Lấy danh sách nghệ sĩ: GET /api/artists
+export const getArtists = async (search = '') => {
+  if (USE_MOCK) {
+    return [
+      {
+        name: 'Sơn Tùng M-TP',
+        avatarUrl:
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Son_Tung_M-TP_1_%282017%29.png/500px-Son_Tung_M-TP_1_%282017%29.png',
+        hasCustomAvatar: true,
+        songCount: 1,
+        totalPlayCount: 990,
+      },
+    ];
+  }
+  const res = await api.get('/artists', {
+    params: search ? { search } : {},
+  });
+  return res.data.artists || res.data;
+};
+
+// 7. Cập nhật / Đổi ảnh đại diện nghệ sĩ: POST /api/artists
+export const updateArtist = async (formDataOrData) => {
+  const isMultipart = formDataOrData instanceof FormData;
+  const res = await api.post('/artists', formDataOrData, {
+    headers: isMultipart ? { 'Content-Type': 'multipart/form-data' } : {},
+  });
+  return res.data.artist || res.data;
+};
+
+// 8. Xóa ảnh đại diện riêng của nghệ sĩ (quay về ảnh mặc định): DELETE /api/artists/:id
+export const deleteArtist = async (id) => {
+  const res = await api.delete(`/artists/${id}`);
   return res.data;
 };
 

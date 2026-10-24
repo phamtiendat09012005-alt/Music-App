@@ -17,10 +17,24 @@ router.post(
   admin,
   upload.fields([
     { name: 'audio', maxCount: 1 },
+    { name: 'instrumental', maxCount: 1 },
     { name: 'cover', maxCount: 1 },
     { name: 'lyrics', maxCount: 1 },
   ]),
   songController.createSong
+);
+
+router.put(
+  '/:id',
+  auth,
+  admin,
+  upload.fields([
+    { name: 'audio', maxCount: 1 },
+    { name: 'instrumental', maxCount: 1 },
+    { name: 'cover', maxCount: 1 },
+    { name: 'lyrics', maxCount: 1 },
+  ]),
+  songController.updateSong
 );
 
 router.put('/:id/lyrics', auth, admin, songController.updateSongLyrics);

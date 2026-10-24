@@ -34,104 +34,38 @@ export default function Login() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#121212',
-      }}
-    >
-      <div
-        style={{
-          width: '380px',
-          padding: '32px',
-          backgroundColor: '#181818',
-          borderRadius: '12px',
-          border: '1px solid #282828',
-        }}
-      >
-        <h2 style={{ textAlign: 'center', color: '#1DB954', marginTop: 0 }}>
-          🎵 Music App Admin
-        </h2>
-        <p style={{ textAlign: 'center', color: '#b3b3b3', fontSize: '13px', marginBottom: '20px' }}>
-          Đăng nhập quản trị hệ thống bài hát
-        </p>
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-logo">♫</div>
+        <h2 className="login-title">Music Studio</h2>
+        <p className="login-sub">Đăng nhập để quản trị bài hát, lời & nhạc Karaoke</p>
 
-        {errorMsg && (
-          <div
-            style={{
-              backgroundColor: '#3b181b',
-              color: '#ff6b6b',
-              padding: '10px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '13px',
-            }}
-          >
-            {errorMsg}
-          </div>
-        )}
+        {errorMsg && <div className="login-error">⚠️ {errorMsg}</div>}
 
         <form onSubmit={handleLogin}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
-              Email
-            </label>
+            <label className="login-label">EMAIL</label>
             <input
+              className="login-input"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '6px',
-                border: '1px solid #333',
-                backgroundColor: '#242424',
-                color: '#fff',
-                boxSizing: 'border-box',
-              }}
             />
           </div>
 
-          <div style={{ marginBottom: '22px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
-              Mật khẩu
-            </label>
+          <div style={{ marginBottom: '24px' }}>
+            <label className="login-label">MẬT KHẨU</label>
             <input
+              className="login-input"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '6px',
-                border: '1px solid #333',
-                backgroundColor: '#242424',
-                color: '#fff',
-                boxSizing: 'border-box',
-              }}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: '#1DB954',
-              color: '#000',
-              fontWeight: 'bold',
-              border: 'none',
-              borderRadius: '24px',
-              cursor: 'pointer',
-              fontSize: '15px',
-            }}
-          >
+          <button type="submit" disabled={isLoading} className="login-submit">
             {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
         </form>

@@ -84,10 +84,8 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardGrey,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Quên mật khẩu?',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontWeight: FontWeight.w800)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,14 +97,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: resetController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Gmail hoặc Số điện thoại',
-                filled: true,
-                fillColor: AppTheme.surfaceBlack,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
               ),
             ),
           ],
@@ -114,17 +106,13 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text('Huỷ', style: TextStyle(color: AppTheme.textGrey)),
+            child: const Text('Huỷ', style: TextStyle(color: AppTheme.textGrey)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã gửi yêu cầu khôi phục mật khẩu!'),
-                  backgroundColor: AppTheme.primaryGreen,
-                ),
+                const SnackBar(content: Text('Đã gửi yêu cầu khôi phục mật khẩu!')),
               );
             },
             child: const Text('Gửi yêu cầu'),
@@ -144,192 +132,192 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.music_note_rounded,
-                    size: 72, color: AppTheme.primaryGreen),
-                const SizedBox(height: 12),
-                const Text(
-                  'Đăng nhập vào Music App',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 32),
-
-                // Ô nhập Gmail hoặc Số điện thoại
-                TextField(
-                  controller: _accountController,
-                  decoration: InputDecoration(
-                    labelText: 'Gmail hoặc Số điện thoại',
-                    prefixIcon: const Icon(Icons.person_outline,
-                        color: AppTheme.textGrey),
-                    filled: true,
-                    fillColor: AppTheme.cardGrey,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Ô nhập Mật khẩu kèm nút ẩn/hiện
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Mật khẩu',
-                    prefixIcon: const Icon(Icons.lock_outline,
-                        color: AppTheme.textGrey),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: AppTheme.textGrey,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    filled: true,
-                    fillColor: AppTheme.cardGrey,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Hàng Ghi nhớ mật khẩu & Quên mật khẩu
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Checkbox(
-                            value: _rememberPassword,
-                            activeColor: AppTheme.primaryGreen,
-                            checkColor: Colors.black,
-                            onChanged: (value) {
-                              setState(
-                                  () => _rememberPassword = value ?? false);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => setState(
-                              () => _rememberPassword = !_rememberPassword),
-                          child: const Text(
-                            'Ghi nhớ mật khẩu',
-                            style: TextStyle(
-                                color: AppTheme.textGrey, fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: _showForgotPasswordDialog,
-                      child: const Text(
-                        'Quên mật khẩu?',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Nút Đăng nhập chính
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: Text(_isLoading ? 'ĐANG XỬ LÝ...' : 'ĐĂNG NHẬP'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Đường kẻ phân cách "HOẶC"
-                const Row(
-                  children: [
-                    Expanded(
-                        child: Divider(color: AppTheme.cardGrey, thickness: 1)),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('HOẶC',
-                          style: TextStyle(
-                              color: AppTheme.textGrey, fontSize: 12)),
-                    ),
-                    Expanded(
-                        child: Divider(color: AppTheme.cardGrey, thickness: 1)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Nút Đăng nhập bằng Google
-                SizedBox(
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: AppTheme.textGrey),
-                      shape: RoundedRectangleBorder(
+      body: AuroraBackground(
+        tint: const Color(0xFF3A1D7A),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 92,
+                      height: 92,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.accentGradient,
                         borderRadius: BorderRadius.circular(30),
+                        boxShadow: AppTheme.glow(AppTheme.accent, 0.5),
+                      ),
+                      child: const Icon(Icons.graphic_eq_rounded,
+                          size: 50, color: Colors.black),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Chào mừng trở lại',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Đăng nhập để nghe nhạc & hát Karaoke',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
+                  ),
+                  const SizedBox(height: 32),
+                  TextField(
+                    controller: _accountController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      hintText: 'Gmail hoặc Số điện thoại',
+                      prefixIcon: Icon(Icons.person_outline_rounded,
+                          color: AppTheme.textGrey),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      hintText: 'Mật khẩu',
+                      prefixIcon: const Icon(Icons.lock_outline_rounded,
+                          color: AppTheme.textGrey),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: AppTheme.textGrey,
+                        ),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
                       ),
                     ),
-                    icon: const Icon(Icons.g_mobiledata,
-                        size: 32, color: Colors.redAccent),
-                    label: const Text(
-                      'Tiếp tục bằng Google',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                'Đang đăng nhập bằng tài khoản Google...')),
-                      );
-                      context.go('/home');
-                    },
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                // Chuyển sang màn hình Đăng ký
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Bạn chưa có tài khoản? ',
-                        style: TextStyle(color: AppTheme.textGrey)),
-                    GestureDetector(
-                      onTap: () => context.push('/register'),
-                      child: const Text(
-                        'Đăng ký ngay',
-                        style: TextStyle(
-                          color: AppTheme.primaryGreen,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(
+                            () => _rememberPassword = !_rememberPassword),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: _rememberPassword,
+                                activeColor: AppTheme.accent,
+                                checkColor: Colors.black,
+                                side: const BorderSide(color: AppTheme.textGrey),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6)),
+                                onChanged: (value) => setState(
+                                    () => _rememberPassword = value ?? false),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Ghi nhớ mật khẩu',
+                                style: TextStyle(
+                                    color: AppTheme.textGrey, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _showForgotPasswordDialog,
+                        child: const Text(
+                          'Quên mật khẩu?',
+                          style: TextStyle(
+                            color: AppTheme.accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  GestureDetector(
+                    onTap: _isLoading ? null : _handleLogin,
+                    child: Container(
+                      height: 54,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.accentGradient,
+                        borderRadius: BorderRadius.circular(27),
+                        boxShadow: AppTheme.glow(AppTheme.accent, 0.35),
+                      ),
+                      child: Text(
+                        _isLoading ? 'Đang xử lý...' : 'Đăng nhập',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 22),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('HOẶC',
+                            style: TextStyle(
+                                color: AppTheme.textGrey, fontSize: 11)),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.g_mobiledata_rounded,
+                          size: 32, color: AppTheme.accentPink),
+                      label: const Text(
+                        'Tiếp tục bằng Google',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Đang đăng nhập bằng tài khoản Google...')),
+                        );
+                        context.go('/home');
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Bạn chưa có tài khoản? ',
+                          style: TextStyle(color: AppTheme.textGrey)),
+                      GestureDetector(
+                        onTap: () => context.push('/register'),
+                        child: const Text(
+                          'Đăng ký ngay',
+                          style: TextStyle(
+                            color: AppTheme.accent,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

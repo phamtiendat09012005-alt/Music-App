@@ -16,20 +16,12 @@ const uploadToCloudinary = (fileBuffer, folderName, resourceType = 'auto') => {
   });
 };
 
-const buildDefaultLrc = (title, artist) =>
-  [
-    `[00:00.00] ♪ ${title} - ${artist}`,
-    `[00:04.50] Giai điệu mở đầu nhẹ nhàng vang lên...`,
-    `[00:10.00] Đưa cảm xúc trôi theo từng nốt nhạc`,
-    `[00:16.50] Từng lời ca ngân vang giữa không gian`,
-    `[00:23.00] Khoảnh khắc bình yên lắng đọng trong tim`,
-    `[00:30.00] Điệp khúc cao trào đầy cảm xúc (${title})`,
-    `[00:38.00] Hòa quyện cùng giọng hát của ${artist}`,
-    `[00:46.00] Giai điệu còn mãi ngân nga...`,
-    `[00:54.00] ♪ Kết thúc bản nhạc ♪`,
-  ].join('\n');
+// Kiểm tra xem lyrics có phải chuỗi mẫu giả lập cũ hay không để làm sạch dữ liệu MongoDB
+const isFakePlaceholderLyrics = (text) =>
+  typeof text === 'string' &&
+  text.includes('Giai điệu mở đầu nhẹ nhàng vang lên...');
 
-// 1. GET /api/songs - Lấy danh sách bài hát (có tìm kiếm theo tên/nghệ sĩ, phân trang)[cite: 7]
+// 1. GET /api/songs - Lấy danh sách bài hát trực tiếp từ MongoDB (có tìm kiếm theo tên/nghệ sĩ, phân trang)[cite: 7]
 exports.getSongs = async (req, res, next) => {
   try {
     const { search, page = 1, limit = 20 } = req.query;
@@ -50,11 +42,11 @@ exports.getSongs = async (req, res, next) => {
       .skip(skip)
       .limit(parseInt(limit));
 
-    // Tự động bổ sung lời .lrc mẫu cho các bài hát cũ trong DB chưa có lyrics
+    // Dọn sạch lời giả lập cũ (nếu có) để đảm bảo 100% dữ liệu trả về là dữ liệu thật từ MongoDB
     for (const song of songs) {
-      if ((!song.lyrics || !song.lyrics.trim()) && (!song.lyricsUrl || !song.lyricsUrl.trim())) {
-        song.lyrics = buildDefaultLrc(song.title, song.artist);
-        await Song.updateOne({ _id: song._id }, { $set: { lyrics: song.lyrics } });
+      if (isFakePlaceholderLyrics(song.lyrics)) {
+        song.lyrics = '';
+        await Song.updateOne({ _id: song._id }, { $set: { lyrics: '' } });
       }
     }
 
@@ -71,12 +63,16 @@ exports.getSongs = async (req, res, next) => {
   }
 };
 
-// 2. GET /api/songs/:id - Lấy chi tiết một bài hát[cite: 7]
+// 2. GET /api/songs/:id - Lấy chi tiết một bài hát từ MongoDB[cite: 7]
 exports.getSongById = async (req, res, next) => {
   try {
     const song = await Song.findById(req.params.id);
     if (!song) {
       return res.status(404).json({ message: 'Không tìm thấy bài hát' });
+    }
+    if (isFakePlaceholderLyrics(song.lyrics)) {
+      song.lyrics = '';
+      await Song.updateOne({ _id: song._id }, { $set: { lyrics: '' } });
     }
     res.status(200).json(song);
   } catch (error) {
@@ -95,9 +91,20 @@ exports.createSong = async (req, res, next) => {
 
     // Upload file audio lên Cloudinary
     const audioResult = await uploadToCloudinary(req.files.audio[0].buffer, 'music-app/audios', 'video');
+    let instrumentalUrl = req.body.instrumentalUrl ? req.body.instrumentalUrl.trim() : '';
     let coverUrl = '';
     let lyricsUrl = '';
     let lyricsContent = lyricsText ? lyricsText.trim() : '';
+
+    // Nếu có upload file nhạc Beat / Karaoke riêng
+    if (req.files.instrumental) {
+      const instResult = await uploadToCloudinary(
+        req.files.instrumental[0].buffer,
+        'music-app/instrumentals',
+        'video'
+      );
+      instrumentalUrl = instResult.secure_url;
+    }
 
     // Nếu có ảnh bìa
     if (req.files.cover) {
@@ -134,6 +141,7 @@ exports.createSong = async (req, res, next) => {
       artist,
       genre: genre || 'Pop',
       audioUrl: audioResult.secure_url,
+      instrumentalUrl,
       coverUrl,
       lyricsUrl,
       lyrics: lyricsContent,
@@ -190,6 +198,113 @@ exports.updateSongLyrics = async (req, res, next) => {
     if (!song) {
       return res.status(404).json({ message: 'Không tìm thấy bài hát' });
     }
+    res.status(200).json(song);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 7. PUT /api/songs/:id - Chỉnh sửa & bổ sung các thành phần còn thiếu (Beat, Lyric, Ảnh bìa, Audio, Thông tin) cho bài hát đã tạo trước đó
+exports.updateSong = async (req, res, next) => {
+  try {
+    const song = await Song.findById(req.params.id);
+    if (!song) {
+      return res.status(404).json({ message: 'Không tìm thấy bài hát trong MongoDB' });
+    }
+
+    const {
+      title,
+      artist,
+      genre,
+      duration,
+      lyricsText,
+      instrumentalUrl,
+      coverUrl,
+      removeInstrumental,
+    } = req.body;
+
+    // 1. Cập nhật các trường thông tin cơ bản nếu được gửi lên
+    if (typeof title === 'string' && title.trim()) {
+      song.title = title.trim();
+    }
+    if (typeof artist === 'string' && artist.trim()) {
+      song.artist = artist.trim();
+    }
+    if (typeof genre === 'string' && genre.trim()) {
+      song.genre = genre.trim();
+    }
+    if (duration !== undefined && parseInt(duration, 10) > 0) {
+      song.duration = parseInt(duration, 10);
+    }
+
+    // 2. Nếu có thay file nhạc gốc (.mp3) mới
+    if (req.files && req.files.audio && req.files.audio[0]) {
+      const audioResult = await uploadToCloudinary(
+        req.files.audio[0].buffer,
+        'music-app/audios',
+        'video'
+      );
+      song.audioUrl = audioResult.secure_url;
+      if ((!duration || parseInt(duration, 10) <= 0) && audioResult.duration) {
+        song.duration = Math.round(audioResult.duration);
+      }
+    }
+
+    // 3. Nếu có bổ sung / thay thế file nhạc Beat Karaoke (.mp3)
+    if (req.files && req.files.instrumental && req.files.instrumental[0]) {
+      const instResult = await uploadToCloudinary(
+        req.files.instrumental[0].buffer,
+        'music-app/instrumentals',
+        'video'
+      );
+      song.instrumentalUrl = instResult.secure_url;
+    } else if (removeInstrumental === 'true') {
+      song.instrumentalUrl = '';
+    } else if (typeof instrumentalUrl === 'string' && instrumentalUrl.trim()) {
+      song.instrumentalUrl = instrumentalUrl.trim();
+    }
+
+    // 4. Nếu có bổ sung / thay thế ảnh bìa
+    if (req.files && req.files.cover && req.files.cover[0]) {
+      const coverResult = await uploadToCloudinary(
+        req.files.cover[0].buffer,
+        'music-app/covers',
+        'image'
+      );
+      song.coverUrl = coverResult.secure_url;
+    } else if (typeof coverUrl === 'string' && coverUrl.trim()) {
+      song.coverUrl = coverUrl.trim();
+    }
+
+    // 5. Nếu có bổ sung / thay thế file lời bài hát (.lrc / .srt / .txt) hoặc nội dung văn bản lyricsText
+    if (typeof lyricsText === 'string') {
+      song.lyrics = lyricsText.trim();
+    }
+    if (req.files && req.files.lyrics && req.files.lyrics[0]) {
+      const fileBuffer = req.files.lyrics[0].buffer;
+      const extractedText = fileBuffer
+        .toString('utf-8')
+        .replace(/^\uFEFF/, '')
+        .trim();
+      if (extractedText && (!lyricsText || !lyricsText.trim())) {
+        song.lyrics = extractedText;
+      }
+      try {
+        const lyricsResult = await uploadToCloudinary(
+          fileBuffer,
+          'music-app/lyrics',
+          'raw'
+        );
+        song.lyricsUrl = lyricsResult.secure_url;
+      } catch (e) {
+        console.warn(
+          'Không đẩy được file lời bài hát lên Cloudinary, đã lưu nội dung trực tiếp vào MongoDB:',
+          e.message
+        );
+      }
+    }
+
+    await song.save();
     res.status(200).json(song);
   } catch (error) {
     next(error);

@@ -21,6 +21,11 @@ const songSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Link file nhạc Beat / Karaoke (.mp3 không lời) trên Cloudinary
+  instrumentalUrl: {
+    type: String,
+    default: '',
+  },
   // Link ảnh bìa bài hát trên Cloudinary
   coverUrl: {
     type: String,

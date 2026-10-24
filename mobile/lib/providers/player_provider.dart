@@ -15,13 +15,19 @@ class PlayerProvider extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isShuffle = false;
   bool _isRepeat = false; // Lặp lại bài hiện tại
-  bool _showLyrics = false; // Trạng thái mở màn hình Lời bài hát (.LRC)
+  int _viewMode = 0; // 0: Đĩa nhạc, 1: Lời bài hát (.LRC), 2: Chế độ Karaoke 🎤
+  bool _isBeatMode = false; // Bật/Tắt chế độ Nhạc Beat (Tách lời / Đệm hát)
+  double _beatVolume = 0.9; // Âm lượng nhạc nền khi hát Karaoke
   double _currentPosition = 0.0;
   int _totalDuration = 0;
 
-  // Bộ nhớ đệm (cache) lời bài hát đã bóc tách cho bài hiện tại để tránh chạy Regex liên tục gây rè tiếng trên máy ảo Android
+  // Bộ nhớ đệm (cache) lời bài hát lấy từ MongoDB cho bài hiện tại
   String _cachedLyricsKey = '';
   List<LyricLine> _cachedLyricLines = [];
+  bool _hasSyncedTimestamps = false;
+  bool _isLoadingLyrics = false;
+  String _lastSyncedSongId = '';
+  double _lyricOffset = 0.0; // Độ trễ căn chỉnh lời bài hát (giây): âm = chữ hiện sớm hơn, dương = chữ hiện trễ hơn
 
   PlayerProvider() {
     _initAudioPlayer();
@@ -35,42 +41,160 @@ class PlayerProvider extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   bool get isShuffle => _isShuffle;
   bool get isRepeat => _isRepeat;
-  bool get showLyrics => _showLyrics;
+  int get viewMode => _viewMode;
+  bool get showLyrics => _viewMode == 1;
+  bool get isKaraokeMode => _viewMode == 2;
+  bool get isBeatMode => _isBeatMode;
+  double get beatVolume => _beatVolume;
+  bool get isLoadingLyrics => _isLoadingLyrics;
+  bool get hasSyncedTimestamps => _hasSyncedTimestamps;
+  double get lyricOffset => _lyricOffset;
   double get currentPosition => _currentPosition;
+  // Vị trí thời gian thực tế dùng để so khớp lời bài hát sau khi trừ bù độ trễ (offset)
+  double get effectiveLyricPosition =>
+      (_currentPosition - _lyricOffset).clamp(0.0, totalDuration.toDouble());
   int get totalDuration =>
       _totalDuration > 0 ? _totalDuration : (currentSong?.duration ?? 180);
 
-  // Lấy danh sách câu hát đã được cache (chỉ parse 1 lần duy nhất khi đổi bài)
+  void adjustLyricOffset(double deltaSeconds) {
+    _lyricOffset = double.parse(
+      (_lyricOffset + deltaSeconds).clamp(-15.0, 15.0).toStringAsFixed(1),
+    );
+    notifyListeners();
+  }
+
+  void resetLyricOffset() {
+    if (_lyricOffset != 0.0) {
+      _lyricOffset = 0.0;
+      notifyListeners();
+    }
+  }
+
+  // Lấy danh sách câu hát thực tế từ MongoDB (không dùng lời giả lập)
   List<LyricLine> get currentLyricLines {
     final song = currentSong;
     if (song == null) return const [];
-    final key = '${song.id}_${song.lyrics.length}_$totalDuration';
+    final raw = song.lyrics.trim();
+    if (raw.isEmpty) {
+      _cachedLyricsKey = '';
+      _cachedLyricLines = const [];
+      _hasSyncedTimestamps = false;
+      return const [];
+    }
+    final key = '${song.id}_${raw.length}_$totalDuration';
     if (_cachedLyricsKey != key) {
       _cachedLyricsKey = key;
-      final raw = song.lyrics.trim().isNotEmpty
-          ? song.lyrics
-          : LyricsView.buildFallbackLrc(song.title, song.artist);
+      _hasSyncedTimestamps = LyricsView.hasSyncedTags(raw);
       _cachedLyricLines = LyricsView.parseRawLyrics(raw, totalDuration);
     }
     return _cachedLyricLines;
   }
 
   int get activeLyricIndex =>
-      LyricsView.findActiveIndex(currentLyricLines, _currentPosition);
+      LyricsView.findActiveIndex(currentLyricLines, effectiveLyricPosition);
+
+  // Đếm nhịp 3 - 2 - 1 (số chấm tròn sáng lên trước khi vào câu hát đầu tiên hoặc sau đoạn nhạc dạo dài)
+  int get countdownSecondsToNextLine {
+    final lines = currentLyricLines;
+    if (lines.isEmpty) return 0;
+
+    final pos = effectiveLyricPosition;
+    // Kiểm tra trước khi vào câu đầu tiên
+    if (pos < lines.first.timeSec) {
+      final remain = lines.first.timeSec - pos;
+      if (remain > 0 && remain <= 3.5) {
+        return remain.ceil().clamp(1, 3);
+      }
+    }
+
+    // Hoặc trong khoảng nghỉ nhạc dạo dài giữa 2 câu (> 6 giây)
+    final idx = activeLyricIndex;
+    if (idx >= 0 && idx + 1 < lines.length) {
+      final nextStart = lines[idx + 1].timeSec;
+      final gap = nextStart - lines[idx].timeSec;
+      final remain = nextStart - pos;
+      if (gap >= 6.0 && remain > 0 && remain <= 3.2) {
+        return remain.ceil().clamp(1, 3);
+      }
+    }
+    return 0;
+  }
+
+  void setViewMode(int mode) {
+    if (_viewMode != mode) {
+      _viewMode = mode;
+      notifyListeners();
+    }
+  }
 
   void setShowLyrics(bool value) {
-    if (_showLyrics != value) {
-      _showLyrics = value;
+    final targetMode = value ? 1 : 0;
+    if (_viewMode != targetMode) {
+      _viewMode = targetMode;
       notifyListeners();
     }
   }
 
   void toggleShowLyrics() {
-    _showLyrics = !_showLyrics;
+    _viewMode = (_viewMode == 0) ? 1 : 0;
     notifyListeners();
   }
 
-  // Nạp và đồng bộ dữ liệu bài hát mới nhất (bao gồm lyrics) từ MongoDB vào hàng đợi
+  // Bật / Tắt chế độ Nhạc Beat (Karaoke Instrumental / Giảm lời ca sĩ)
+  Future<void> toggleBeatMode() async {
+    await setBeatMode(!_isBeatMode);
+  }
+
+  Future<void> setBeatMode(bool enable) async {
+    if (_isBeatMode == enable) return;
+    _isBeatMode = enable;
+    notifyListeners();
+
+    final song = currentSong;
+    if (song == null) return;
+
+    // Trường hợp 1: Bài hát có file nhạc Beat (instrumentalUrl) riêng -> Chuyển luồng nhạc giữ nguyên vị trí giây
+    if (song.hasInstrumental) {
+      final targetUrl = _isBeatMode ? song.instrumentalUrl : song.audioUrl;
+      final savedPos = _currentPosition;
+      final wasPlaying = _isPlaying;
+      try {
+        await _audioPlayer.setUrl(targetUrl);
+        await _audioPlayer.setVolume(_beatVolume);
+        await _audioPlayer.seek(Duration(milliseconds: (savedPos * 1000).round()));
+        if (wasPlaying) {
+          await _audioPlayer.play();
+        }
+      } catch (_) {
+        // Nếu URL beat lỗi, quay về chế độ giảm âm giọng hát dự phòng
+        await _applyEffectiveVolume();
+      }
+    } else {
+      // Trường hợp 2: Chưa có file Beat riêng -> Bật chế độ Đệm Hát (Vocal Ducking / Giảm lời gốc để hát đè lên)
+      await _applyEffectiveVolume();
+    }
+    notifyListeners();
+  }
+
+  Future<void> setBeatVolume(double volume) async {
+    _beatVolume = volume.clamp(0.1, 1.0);
+    await _applyEffectiveVolume();
+    notifyListeners();
+  }
+
+  Future<void> _applyEffectiveVolume() async {
+    final song = currentSong;
+    double effective = _beatVolume;
+    if (_isBeatMode && (song == null || !song.hasInstrumental)) {
+      // Khi bật chế độ Beat trên nhạc gốc có lời: hạ nhẹ nền xuống 55% để giọng người hát nổi bật hơn
+      effective = (_beatVolume * 0.55).clamp(0.15, 0.85);
+    }
+    try {
+      await _audioPlayer.setVolume(effective);
+    } catch (_) {}
+  }
+
+  // Nạp và đồng bộ dữ liệu bài hát mới nhất (bao gồm lyrics & instrumentalUrl) từ MongoDB vào hàng đợi
   void setInitialQueue(List<Song> songs) {
     if (songs.isEmpty) return;
     if (_queue.isEmpty) {
@@ -88,16 +212,66 @@ class PlayerProvider extends ChangeNotifier {
       }
     }
     notifyListeners();
+    _syncCurrentSongFromMongo();
+  }
+
+  // Đồng bộ lời bài hát (.LRC/.SRT) & nhạc Beat của bài đang phát trực tiếp từ MongoDB
+  Future<void> _syncCurrentSongFromMongo({bool forceRefresh = false}) async {
+    final song = currentSong;
+    if (song == null || song.id.trim().isEmpty) return;
+
+    if (!forceRefresh &&
+        _lastSyncedSongId == song.id &&
+        song.lyrics.trim().isNotEmpty) {
+      return;
+    }
+    _lastSyncedSongId = song.id;
+    final targetId = song.id;
+
+    final needsRemoteFetch = song.lyrics.trim().isEmpty;
+    if (needsRemoteFetch) {
+      _isLoadingLyrics = true;
+      notifyListeners();
+    }
+
+    try {
+      // 1. Lấy bản ghi bài hát mới nhất trực tiếp từ MongoDB (GET /api/songs/:id)
+      Song? freshSong = await ApiService().getSongById(targetId);
+      Song updatedSong = freshSong ?? song;
+
+      // 2. Nếu trong MongoDB trường lyrics đang trống nhưng có file lyricsUrl (.lrc/.srt trên Cloudinary), tải nội dung về
+      if (updatedSong.lyrics.trim().isEmpty &&
+          updatedSong.lyricsUrl.trim().isNotEmpty) {
+        final fetchedText =
+            await ApiService().fetchLyricsFromUrl(updatedSong.lyricsUrl);
+        if (fetchedText.trim().isNotEmpty) {
+          updatedSong = updatedSong.copyWith(lyrics: fetchedText.trim());
+        }
+      }
+
+      // 3. Cập nhật lại bài hát trong hàng đợi để cả LyricsView, KaraokeView và NowPlayingScreen cùng nhận dữ liệu MongoDB
+      final idx = _queue.indexWhere((s) => s.id == targetId);
+      if (idx != -1) {
+        _queue[idx] = updatedSong;
+      }
+    } catch (_) {
+      // Giữ nguyên dữ liệu hiện có nếu mất kết nối tạm thời
+    } finally {
+      if (currentSong?.id == targetId) {
+        _isLoadingLyrics = false;
+        notifyListeners();
+      }
+    }
   }
 
   void _startFallbackTimer() {
     _fallbackTimer?.cancel();
-    _fallbackTimer = Timer.periodic(const Duration(milliseconds: 300), (_) {
+    _fallbackTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
       if (!_isPlaying || _audioPlayer.playing) return;
 
       final maxDur = totalDuration.toDouble();
-      if (_currentPosition + 0.3 < maxDur) {
-        _currentPosition += 0.3;
+      if (_currentPosition + 0.15 < maxDur) {
+        _currentPosition += 0.15;
         notifyListeners();
       } else {
         if (_isRepeat) {
@@ -116,11 +290,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _initAudioPlayer() {
-    // Giới hạn tần suất cập nhật UI (throttle >= 180ms) để giảm tải CPU trên máy ảo Android,
-    // tránh hiện tượng nghẽn bộ đệm âm thanh (audio buffer underrun) gây tiếng nổ lách tách
+    // Ở chế độ Lời bài hát (_viewMode == 1) và Karaoke (_viewMode == 2), cập nhật mỗi 70ms để bắt nhịp chữ chuẩn xác;
+    // Ở chế độ Đĩa nhạc (_viewMode == 0), giữ throttle 150ms để tiết kiệm CPU trên máy ảo Android
     _audioPlayer.positionStream.listen((position) {
       final newPos = position.inMilliseconds / 1000.0;
-      if ((newPos - _currentPosition).abs() >= 0.18 || newPos < 0.2) {
+      final threshold = (_viewMode == 0) ? 0.15 : 0.07;
+      if ((newPos - _currentPosition).abs() >= threshold || newPos < 0.12) {
         _currentPosition = newPos;
         notifyListeners();
       }
@@ -175,20 +350,31 @@ class PlayerProvider extends ChangeNotifier {
     await _loadAndPlayCurrent();
   }
 
+  Future<void> refreshCurrentSongFromMongo() async {
+    await _syncCurrentSongFromMongo(forceRefresh: true);
+  }
+
   Future<void> _loadAndPlayCurrent() async {
     final song = currentSong;
     if (song == null) return;
 
     _stopFallbackTimer();
     _currentPosition = 0;
+    _lyricOffset = 0.0;
     _totalDuration = song.duration > 0 ? song.duration : 180;
     _isPlaying = true;
     notifyListeners();
 
+    // Đồng bộ lyrics & instrumentalUrl mới nhất của bài hát từ MongoDB
+    _syncCurrentSongFromMongo();
+
+    final targetUrl =
+        (_isBeatMode && song.hasInstrumental) ? song.instrumentalUrl : song.audioUrl;
+
     try {
       await _audioPlayer.stop();
-      await _audioPlayer.setVolume(0.9); // Giữ mức âm lượng 90% để tránh clipping/vỡ tiếng trên loa máy ảo
-      await _audioPlayer.setUrl(song.audioUrl);
+      await _applyEffectiveVolume();
+      await _audioPlayer.setUrl(targetUrl);
       await _audioPlayer.play();
       ApiService().recordPlay(song.id);
     } catch (e) {
@@ -238,6 +424,17 @@ class PlayerProvider extends ChangeNotifier {
     } else {
       _currentIndex = (_currentIndex - 1 + _queue.length) % _queue.length;
       _loadAndPlayCurrent();
+    }
+  }
+
+  // Hát lại câu hiện tại (Rewind current lyric line)
+  void replayCurrentLine() {
+    final lines = currentLyricLines;
+    final idx = activeLyricIndex;
+    if (lines.isNotEmpty && idx >= 0 && idx < lines.length) {
+      seek(lines[idx].timeSec);
+    } else {
+      seek(0);
     }
   }
 

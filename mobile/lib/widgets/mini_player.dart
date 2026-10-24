@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/player_provider.dart';
 import '../core/theme.dart';
 
+/// Mini player dạng thẻ nổi: ảnh bìa, tên bài, lời đang chạy, thanh tiến độ gradient mảnh.
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key});
 
@@ -18,101 +19,131 @@ class MiniPlayer extends StatelessWidget {
     final activeIdx = player.activeLyricIndex;
     final currentLyricText =
         (activeIdx >= 0 && activeIdx < lines.length) ? lines[activeIdx].text : '';
+    final total = player.totalDuration.toDouble();
+    final progress =
+        total > 0 ? (player.currentPosition / total).clamp(0.0, 1.0) : 0.0;
 
     return GestureDetector(
       onTap: () => context.push('/now-playing'),
       child: Container(
-        height: 68,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        margin: const EdgeInsets.fromLTRB(14, 4, 14, 10),
         decoration: BoxDecoration(
-          color: AppTheme.cardGrey,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                song.coverUrl,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 44,
-                  height: 44,
-                  color: AppTheme.surfaceBlack,
-                  child: const Icon(Icons.music_note,
-                      color: AppTheme.primaryGreen),
-                ),
-              ),
+          color: AppTheme.cardElevated.withValues(alpha: 0.97),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppTheme.outline),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.accent.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+              child: Row(
                 children: [
-                  Text(
-                    '${song.title} • ${song.artist}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: AppTheme.glow(AppTheme.accentPink, 0.25),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: CoverImage(url: song.coverUrl, size: 48, radius: 14),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    currentLyricText.isNotEmpty
-                        ? '♪ $currentLyricText'
-                        : song.artist,
-                    style: const TextStyle(
-                      color: AppTheme.primaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          currentLyricText.isNotEmpty
+                              ? '♪ $currentLyricText'
+                              : song.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: currentLyricText.isNotEmpty
+                                ? AppTheme.accent
+                                : AppTheme.textGrey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  ),
+                  IconButton(
+                    tooltip: 'Hát Karaoke',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.mic_rounded,
+                        color: AppTheme.accentPink, size: 22),
+                    onPressed: () {
+                      player.setViewMode(2);
+                      context.push('/now-playing');
+                    },
+                  ),
+                  GestureDetector(
+                    onTap: () => player.togglePlayPause(),
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        gradient: AppTheme.accentGradient,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        player.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.black,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Bài tiếp theo',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.skip_next_rounded,
+                        color: Colors.white, size: 26),
+                    onPressed: () => player.nextSong(),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Xem lời bài hát (.LRC)',
-              icon: const Icon(
-                Icons.lyrics_outlined,
-                color: AppTheme.primaryGreen,
-                size: 22,
+            // Thanh tiến độ gradient
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: Stack(
+                  children: [
+                    Container(height: 3, color: Colors.white12),
+                    FractionallySizedBox(
+                      widthFactor: progress,
+                      child: Container(
+                        height: 3,
+                        decoration: const BoxDecoration(
+                          gradient: AppTheme.accentGradient,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              onPressed: () {
-                player.setShowLyrics(true);
-                context.push('/now-playing');
-              },
-            ),
-            IconButton(
-              tooltip: 'Bài trước',
-              icon: const Icon(Icons.skip_previous_rounded,
-                  color: Colors.white, size: 26),
-              onPressed: () => player.previousSong(),
-            ),
-            IconButton(
-              tooltip: player.isPlaying ? 'Tạm dừng' : 'Phát',
-              icon: Icon(
-                player.isPlaying
-                    ? Icons.pause_circle_filled
-                    : Icons.play_circle_filled,
-                color: AppTheme.primaryGreen,
-                size: 36,
-              ),
-              onPressed: () => player.togglePlayPause(),
-            ),
-            IconButton(
-              tooltip: 'Bài tiếp theo',
-              icon: const Icon(Icons.skip_next_rounded,
-                  color: Colors.white, size: 26),
-              onPressed: () => player.nextSong(),
             ),
           ],
         ),

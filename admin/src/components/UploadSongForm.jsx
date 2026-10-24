@@ -6,6 +6,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
   const [artist, setArtist] = useState('');
   const [genre, setGenre] = useState('Pop');
   const [audioFile, setAudioFile] = useState(null);
+  const [instrumentalFile, setInstrumentalFile] = useState(null);
   const [duration, setDuration] = useState(0);
   const [coverFile, setCoverFile] = useState(null);
   const [lyricsFile, setLyricsFile] = useState(null);
@@ -50,10 +51,11 @@ export default function UploadSongForm({ onUploadSuccess }) {
       return;
     }
 
-    // Chuẩn hóa danh sách nghệ sĩ (VD: "Sơn Tùng M-TP ,  RHYDER" -> "Sơn Tùng M-TP, RHYDER")
+    // Chuẩn hóa danh sách nghệ sĩ (VD: "Sơn Tùng M-TP ft. RHYDER", "Sơn Tùng M-TP x RHYDER")
     const normalizedArtist = artist
-      .split(/\s*(?:,|;|(?:\b(?:ft|feat)\.?\b)|&)\s*/i)
-      .map((a) => a.trim())
+      .normalize('NFC')
+      .split(/(?:\s*[,;/&]\s*|\s+(?:ft|feat|featuring|vs)\.?\s+|\b(?:ft|feat|featuring|vs)\.\s*|\s+x\s+|\s+v[àa]\s+)/i)
+      .map((a) => a.trim().replace(/^[(\[\s]+|[)\]\s]+$/g, '').replace(/\s+/g, ' '))
       .filter(Boolean)
       .join(', ');
 
@@ -64,6 +66,9 @@ export default function UploadSongForm({ onUploadSuccess }) {
     formData.append('genre', genre.trim());
     formData.append('duration', duration || 0);
     formData.append('audio', audioFile);
+    if (instrumentalFile) {
+      formData.append('instrumental', instrumentalFile);
+    }
     formData.append('cover', coverFile);
     if (lyricsFile) {
       formData.append('lyrics', lyricsFile);
@@ -80,6 +85,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
       setArtist('');
       setGenre('Pop');
       setAudioFile(null);
+      setInstrumentalFile(null);
       setCoverFile(null);
       setLyricsFile(null);
       setLyricsText('');
@@ -96,7 +102,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
     padding: '10px',
     borderRadius: '6px',
     border: '1px solid #333',
-    backgroundColor: '#242424',
+    backgroundColor: '#1C1C2B',
     color: '#fff',
     width: '100%',
     boxSizing: 'border-box',
@@ -105,14 +111,14 @@ export default function UploadSongForm({ onUploadSuccess }) {
   return (
     <div
       style={{
-        backgroundColor: '#181818',
+        backgroundColor: '#12121D',
         padding: '20px',
         borderRadius: '10px',
         marginBottom: '28px',
-        border: '1px solid #282828',
+        border: '1px solid #1C1C2B',
       }}
     >
-      <h3 style={{ marginTop: 0, color: '#1DB954' }}>+ Upload Bài Hát Mới</h3>
+      <h3 style={{ marginTop: 0, color: '#B794FF' }}>+ Upload Bài Hát Mới</h3>
       {errorMsg && (
         <div style={{ color: '#ff6b6b', marginBottom: '12px', fontSize: '14px' }}>
           ⚠️ {errorMsg}
@@ -129,7 +135,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
           }}
         >
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
               Tên bài hát (title) *
             </label>
             <input
@@ -142,7 +148,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
               Nghệ sĩ (artist - cách nhau dấu phẩy nếu nhiều người) *
             </label>
             <input
@@ -155,7 +161,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
               Thể loại (genre)
             </label>
             <input
@@ -177,8 +183,8 @@ export default function UploadSongForm({ onUploadSuccess }) {
           }}
         >
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
-              File nhạc (.mp3) *
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
+              File nhạc gốc có lời (.mp3) *
             </label>
             <input
               type="file"
@@ -189,7 +195,19 @@ export default function UploadSongForm({ onUploadSuccess }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#B794FF' }}>
+              🎤 File nhạc Beat / Karaoke (.mp3 - Tùy chọn)
+            </label>
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={(e) => setInstrumentalFile(e.target.files[0] || null)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
               Ảnh bìa (.jpg, .png) *
             </label>
             <input
@@ -201,7 +219,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
               File lời bài hát (.lrc / .srt / .txt - Tùy chọn)
             </label>
             <input
@@ -214,7 +232,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
         </div>
 
         <div style={{ marginBottom: '18px' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#b3b3b3' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: '#A5A3BA' }}>
             Nội dung lời bài hát (Hỗ trợ chuẩn <code>.LRC [mm:ss.xx]</code>, chuẩn <code>.SRT (00:00:04,500 --&gt; 00:00:10,000)</code> hoặc văn bản thường)
           </label>
           <textarea
@@ -236,7 +254,7 @@ export default function UploadSongForm({ onUploadSuccess }) {
           disabled={isLoading}
           style={{
             padding: '10px 24px',
-            backgroundColor: isLoading ? '#555' : '#1DB954',
+            backgroundColor: isLoading ? '#555' : '#B794FF',
             color: '#000',
             fontWeight: 'bold',
             border: 'none',
