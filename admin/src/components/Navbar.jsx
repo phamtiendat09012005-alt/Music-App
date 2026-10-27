@@ -1,8 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
 
@@ -13,36 +14,37 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  const isSongsActive = location.pathname === '/songs' || location.pathname === '/';
+  const isArtistsActive = location.pathname === '/artists';
+  const initial = user?.name ? user.name.trim().charAt(0).toUpperCase() : 'A';
+
   return (
-    <header
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '14px 28px',
-        backgroundColor: '#181818',
-        borderBottom: '1px solid #282828',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#1DB954' }}>
-          🎵 Music App Admin
-        </span>
+    <header className="app-nav">
+      <div className="app-brand">
+        <div className="app-brand-logo">♫</div>
+        <div>
+          Music Studio
+          <small>Bảng quản trị</small>
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {user && <span style={{ color: '#b3b3b3' }}>Xin chào, {user.name}</span>}
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#e91429',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
+
+      <nav className="app-links">
+        <Link to="/songs" className={`app-link ${isSongsActive ? 'active' : ''}`}>
+          🎵 Bài hát
+        </Link>
+        <Link to="/artists" className={`app-link ${isArtistsActive ? 'active' : ''}`}>
+          🎤 Nghệ sĩ
+        </Link>
+      </nav>
+
+      <div className="app-user">
+        {user && (
+          <>
+            <div className="app-avatar">{initial}</div>
+            <span>{user.name}</span>
+          </>
+        )}
+        <button className="btn-ghost-danger" onClick={handleLogout}>
           Đăng xuất
         </button>
       </div>

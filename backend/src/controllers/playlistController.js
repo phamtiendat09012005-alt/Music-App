@@ -47,3 +47,46 @@ exports.deletePlaylist = async (req, res, next) => {
   }
 };
 
+// 4. POST /api/playlists/:id/songs - Thêm bài hát vào playlist trên MongoDB
+exports.addSongToPlaylist = async (req, res, next) => {
+  try {
+    const { songId } = req.body;
+    if (!songId) {
+      return res.status(400).json({ message: 'Thiếu songId cần thêm' });
+    }
+    const playlist = await Playlist.findById(req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ message: 'Không tìm thấy playlist' });
+    }
+    const exists = playlist.songs.some((id) => id.toString() === String(songId));
+    if (!exists) {
+      playlist.songs.push(songId);
+      await playlist.save();
+    }
+    const populated = await Playlist.findById(playlist._id).populate('songs');
+    res.status(200).json(populated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 5. DELETE /api/playlists/:id/songs/:songId - Xóa bài hát khỏi playlist trên MongoDB
+exports.removeSongFromPlaylist = async (req, res, next) => {
+  try {
+    const { id, songId } = req.params;
+    const playlist = await Playlist.findById(id);
+    if (!playlist) {
+      return res.status(404).json({ message: 'Không tìm thấy playlist' });
+    }
+    playlist.songs = playlist.songs.filter(
+      (item) => item.toString() !== String(songId)
+    );
+    await playlist.save();
+    const populated = await Playlist.findById(playlist._id).populate('songs');
+    res.status(200).json(populated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+

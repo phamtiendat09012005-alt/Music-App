@@ -13,6 +13,20 @@ class Playlist {
     required this.songs,
   });
 
+  Playlist copyWith({
+    String? id,
+    String? name,
+    String? owner,
+    List<Song>? songs,
+  }) {
+    return Playlist(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      owner: owner ?? this.owner,
+      songs: songs ?? this.songs,
+    );
+  }
+
   factory Playlist.fromJson(Map<String, dynamic> json) {
     final rawSongs = json['songs'] as List? ?? [];
     final parsedSongs = rawSongs

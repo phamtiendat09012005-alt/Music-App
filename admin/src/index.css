@@ -1,0 +1,358 @@
+/* Hệ thiết kế "Aurora" cho Web Admin: nền mực đậm + tím/hồng/ngọc lam */
+:root {
+  --bg: #0a0a12;
+  --surface: #12121d;
+  --card: #1c1c2b;
+  --elevated: #26263a;
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #f5f3ff;
+  --muted: #a5a3ba;
+  --accent: #b794ff;
+  --pink: #ff7eb6;
+  --aqua: #5eead4;
+  --gradient: linear-gradient(135deg, #b794ff, #ff7eb6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(900px 500px at 12% -10%, rgba(109, 59, 255, 0.28), transparent 60%),
+    radial-gradient(700px 420px at 100% 0%, rgba(255, 94, 162, 0.16), transparent 60%),
+    var(--bg) !important;
+  background-attachment: fixed !important;
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.02em;
+}
+
+/* Form controls */
+input,
+textarea,
+select {
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+input:not([type='file']):not([type='checkbox']),
+textarea,
+select {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
+}
+
+input:not([type='file']):not([type='checkbox']):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(183, 148, 255, 0.22);
+}
+
+input[type='file'] {
+  border-radius: 12px !important;
+  border: 1px dashed rgba(183, 148, 255, 0.4) !important;
+  background: rgba(183, 148, 255, 0.05) !important;
+  color: var(--muted) !important;
+  cursor: pointer;
+}
+
+input[type='file']::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: #000;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  transition: transform 0.15s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:not(:disabled):hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+/* Bảng */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+thead tr {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+tbody tr {
+  transition: background 0.15s ease;
+}
+
+tbody tr:hover {
+  background: rgba(183, 148, 255, 0.06) !important;
+}
+
+audio {
+  border-radius: 999px;
+  filter: invert(0.92) hue-rotate(220deg) saturate(0.7);
+}
+
+a {
+  transition: opacity 0.2s;
+}
+
+a:hover {
+  opacity: 0.85;
+}
+
+code {
+  background: rgba(183, 148, 255, 0.14);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.92em;
+}
+
+/* Thanh cuộn */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(183, 148, 255, 0.28);
+  border-radius: 10px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(183, 148, 255, 0.5);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(183, 148, 255, 0.4);
+}
+
+/* Navbar */
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 28px;
+  background: rgba(10, 10, 18, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.app-brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--gradient);
+  color: #000;
+  font-size: 20px;
+  box-shadow: 0 8px 24px rgba(183, 148, 255, 0.4);
+}
+
+.app-brand small {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-links {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+}
+
+.app-link {
+  padding: 8px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.app-link:hover {
+  color: var(--text);
+}
+
+.app-link.active {
+  background: var(--gradient);
+  color: #000;
+  box-shadow: 0 6px 18px rgba(183, 148, 255, 0.35);
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.app-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gradient);
+  color: #000;
+  font-weight: 800;
+}
+
+.btn-ghost-danger {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  background: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Trang đăng nhập */
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px 32px;
+  border-radius: 28px;
+  background: rgba(28, 28, 43, 0.72);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid var(--border);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(183, 148, 255, 0.06);
+}
+
+.login-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--gradient);
+  font-size: 36px;
+  color: #000;
+  box-shadow: 0 16px 40px rgba(183, 148, 255, 0.5);
+}
+
+.login-title {
+  margin: 0;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 900;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-sub {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13.5px;
+  margin: 8px 0 26px;
+}
+
+.login-label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.login-input {
+  width: 100%;
+  padding: 13px 14px;
+  font-size: 14px;
+}
+
+.login-submit {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: #000;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(183, 148, 255, 0.4);
+}
+
+.login-error {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fb7185;
+  padding: 11px 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+

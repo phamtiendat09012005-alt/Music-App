@@ -3,33 +3,44 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
-import '../services/api_service.dart';
+
+export '../screens/karaoke_screen.dart';
 
 class LyricLine {
   final double timeSec;
+  final double? endTimeSec;
   final String text;
 
   const LyricLine({
     required this.timeSec,
+    this.endTimeSec,
     required this.text,
   });
+
+  LyricLine copyWith({
+    double? timeSec,
+    double? endTimeSec,
+    String? text,
+  }) {
+    return LyricLine(
+      timeSec: timeSec ?? this.timeSec,
+      endTimeSec: endTimeSec ?? this.endTimeSec,
+      text: text ?? this.text,
+    );
+  }
 }
 
 class LyricsView extends StatefulWidget {
   const LyricsView({super.key});
 
-  static String buildFallbackLrc(String title, String artist) {
-    return [
-      '[00:00.00] ♪ $title - $artist',
-      '[00:04.50] Giai điệu mở đầu nhẹ nhàng vang lên...',
-      '[00:10.00] Đưa cảm xúc trôi theo từng nốt nhạc',
-      '[00:16.50] Từng lời ca ngân vang giữa không gian',
-      '[00:23.00] Khoảnh khắc bình yên lắng đọng trong tim',
-      '[00:30.00] Điệp khúc cao trào đầy cảm xúc ($title)',
-      '[00:38.00] Hòa quyện cùng giọng hát của $artist',
-      '[00:46.00] Giai điệu còn mãi ngân nga...',
-      '[00:54.00] ♪ Kết thúc bản nhạc ♪',
-    ].join('\n');
+  /// Kiểm tra nội dung lời bài hát từ MongoDB có nhãn thời gian đồng bộ (.LRC hoặc .SRT) hay không
+  static bool hasSyncedTags(String raw) {
+    if (raw.trim().isEmpty) return false;
+    final tagRegex = RegExp(r'\[(\d{1,3}):(\d{1,2}(?:\.\d{1,3})?)\]');
+    final srtRegex = RegExp(
+      r'(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?\s*-->',
+    );
+    return tagRegex.hasMatch(raw) || srtRegex.hasMatch(raw);
   }
 
   static double _parseSrtTime(
@@ -47,26 +58,45 @@ class LyricsView extends StatefulWidget {
     return hours * 3600.0 + mins * 60.0 + secs + ms;
   }
 
+  /// Bóc tách lời bài hát thực tế từ MongoDB (hỗ trợ .LRC, [start --> end], thẻ [offset:±ms], .SRT và văn bản thuần)
   static List<LyricLine> parseRawLyrics(String raw, int totalDuration) {
-    final cleaned = raw.replaceFirst(RegExp(r'^\uFEFF'), '');
+    final cleaned = raw.replaceFirst(RegExp(r'^\uFEFF'), '').trim();
+    if (cleaned.isEmpty) return const [];
+
     final lines = cleaned.split(RegExp(r'\r?\n'));
     final tagRegex = RegExp(r'\[(\d{1,3}):(\d{1,2}(?:\.\d{1,3})?)\]');
+    final inlineTagRegex = RegExp(r'<\d{1,3}:\d{1,2}(?:\.\d{1,3})?>');
+    final lrcRangeRegex = RegExp(
+      r'^\[(\d{1,3}):(\d{1,2}(?:\.\d{1,3})?)\s*-->\s*(\d{1,3}):(\d{1,2}(?:\.\d{1,3})?)\]\s*(.*)$',
+    );
+    final offsetRegex =
+        RegExp(r'^\[offset:\s*([+-]?\d+)\s*\]$', caseSensitive: false);
     final srtArrowRegex = RegExp(
       r'^(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?\s*-->\s*(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?',
     );
     final metadataRegex = RegExp(
-      r'^(\[(ti|ar|al|by|offset):.*\]|WEBVTT.*)$',
+      r'^(\[(ti|ar|al|by|offset|re|ve|length):.*\]|WEBVTT.*)$',
       caseSensitive: false,
     );
     final indexOnlyRegex = RegExp(r'^\d+$');
     final htmlTagRegex = RegExp(r'<[^>]+>');
 
+    double fileOffsetSec = 0.0;
     final List<LyricLine> synced = [];
     final List<String> plainLines = [];
 
     for (int i = 0; i < lines.length; i++) {
       final trimmed = lines[i].trim();
-      if (trimmed.isEmpty || metadataRegex.hasMatch(trimmed)) continue;
+      if (trimmed.isEmpty) continue;
+
+      final offsetMatch = offsetRegex.firstMatch(trimmed);
+      if (offsetMatch != null) {
+        final offsetMs = int.tryParse(offsetMatch.group(1) ?? '0') ?? 0;
+        fileOffsetSec = offsetMs / 1000.0;
+        continue;
+      }
+
+      if (metadataRegex.hasMatch(trimmed)) continue;
 
       // 1. Bỏ qua dòng số thứ tự câu (1, 2, 3...) của file .SRT
       if (indexOnlyRegex.hasMatch(trimmed) &&
@@ -75,15 +105,54 @@ class LyricsView extends StatefulWidget {
         continue;
       }
 
-      // 2. Xử lý định dạng phụ đề .SRT (VD: 00:00:04,500 --> 00:00:10,000)
+      // 2. Xử lý định dạng [mm:ss.xx --> mm:ss.xx] Dòng lời
+      final rangeMatch = lrcRangeRegex.firstMatch(trimmed);
+      if (rangeMatch != null) {
+        final sMins = int.tryParse(rangeMatch.group(1) ?? '0') ?? 0;
+        final sSecs = double.tryParse(rangeMatch.group(2) ?? '0') ?? 0.0;
+        final eMins = int.tryParse(rangeMatch.group(3) ?? '0') ?? 0;
+        final eSecs = double.tryParse(rangeMatch.group(4) ?? '0') ?? 0.0;
+        final textPart = (rangeMatch.group(5) ?? '')
+            .replaceAll(inlineTagRegex, '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+
+        final startSec =
+            (sMins * 60.0 + sSecs + fileOffsetSec).clamp(0.0, 99999.0);
+        final endSec =
+            (eMins * 60.0 + eSecs + fileOffsetSec).clamp(0.0, 99999.0);
+        if (textPart.isNotEmpty) {
+          synced.add(
+            LyricLine(
+              timeSec: startSec,
+              endTimeSec: endSec > startSec ? endSec : null,
+              text: textPart,
+            ),
+          );
+        }
+        continue;
+      }
+
+      // 3. Xử lý định dạng phụ đề .SRT (VD: 00:00:04,500 --> 00:00:10,000)
       final srtMatch = srtArrowRegex.firstMatch(trimmed);
       if (srtMatch != null) {
-        final startSec = _parseSrtTime(
+        final rawStart = _parseSrtTime(
           srtMatch.group(1),
           srtMatch.group(2),
           srtMatch.group(3),
           srtMatch.group(4),
         );
+        final rawEnd = _parseSrtTime(
+          srtMatch.group(5),
+          srtMatch.group(6),
+          srtMatch.group(7),
+          srtMatch.group(8),
+        );
+        final startSec =
+            (rawStart + fileOffsetSec) > 0 ? (rawStart + fileOffsetSec) : 0.0;
+        final endSec = (rawEnd + fileOffsetSec) > startSec
+            ? (rawEnd + fileOffsetSec)
+            : null;
         final List<String> textParts = [];
         int j = i + 1;
         while (j < lines.length) {
@@ -106,6 +175,7 @@ class LyricsView extends StatefulWidget {
           synced.add(
             LyricLine(
               timeSec: startSec,
+              endTimeSec: endSec,
               text: textParts.join(' '),
             ),
           );
@@ -113,17 +183,40 @@ class LyricsView extends StatefulWidget {
         continue;
       }
 
-      // 3. Xử lý định dạng .LRC (VD: [00:04.50] Dòng lời...)
+      // 4. Xử lý định dạng .LRC (VD: [00:04.50] Dòng lời...)
       final matches = tagRegex.allMatches(trimmed).toList();
       if (matches.isNotEmpty) {
-        final lyricText = trimmed.replaceAll(tagRegex, '').trim();
-        if (lyricText.isEmpty) continue;
+        final lyricText = trimmed
+            .replaceAll(tagRegex, '')
+            .replaceAll(inlineTagRegex, '')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+
+        if (lyricText.isEmpty ||
+            lyricText == '♪' ||
+            lyricText == '...' ||
+            lyricText == '♪ ...') {
+          final firstMatch = matches.first;
+          final mins = int.tryParse(firstMatch.group(1) ?? '0') ?? 0;
+          final secs = double.tryParse(firstMatch.group(2) ?? '0') ?? 0.0;
+          final breakSec =
+              (mins * 60.0 + secs + fileOffsetSec).clamp(0.0, 99999.0);
+          if (synced.isNotEmpty &&
+              synced.last.endTimeSec == null &&
+              breakSec > synced.last.timeSec) {
+            synced[synced.length - 1] =
+                synced.last.copyWith(endTimeSec: breakSec);
+          }
+          continue;
+        }
+
         for (final match in matches) {
           final minutes = int.tryParse(match.group(1) ?? '0') ?? 0;
           final seconds = double.tryParse(match.group(2) ?? '0') ?? 0.0;
+          final rawSec = minutes * 60.0 + seconds + fileOffsetSec;
           synced.add(
             LyricLine(
-              timeSec: minutes * 60.0 + seconds,
+              timeSec: rawSec > 0 ? rawSec : 0.0,
               text: lyricText,
             ),
           );
@@ -144,11 +237,12 @@ class LyricsView extends StatefulWidget {
         plainLines.length,
         (i) => LyricLine(
           timeSec: double.parse((step * i).toStringAsFixed(1)),
+          endTimeSec: double.parse((step * (i + 1)).toStringAsFixed(1)),
           text: plainLines[i],
         ),
       );
     }
-    return [];
+    return const [];
   }
 
   static int findActiveIndex(List<LyricLine> lines, double currentPosition) {
@@ -167,12 +261,7 @@ class LyricsView extends StatefulWidget {
 
 class _LyricsViewState extends State<LyricsView> {
   final ScrollController _scrollController = ScrollController();
-  String _loadedSongId = '';
-  String _loadedLyricsHash = '';
-  bool _isLoadingUrl = false;
-  String _rawLyrics = '';
-  List<LyricLine> _parsedLines = [];
-  bool _hasSyncedTimestamps = false;
+  String _lastSongId = '';
   int _lastScrolledIndex = -1;
 
   static const double _itemExtent = 52.0;
@@ -183,77 +272,11 @@ class _LyricsViewState extends State<LyricsView> {
     super.dispose();
   }
 
-  void _ensureLyricsLoaded(Song? song, int totalDuration) {
-    if (song == null) {
-      _loadedSongId = '';
-      _loadedLyricsHash = '';
-      _isLoadingUrl = false;
-      _rawLyrics = '';
-      _parsedLines = [];
-      _hasSyncedTimestamps = false;
+  void _scrollToActiveLine(String songId, int activeIndex) {
+    if (_lastSongId != songId) {
+      _lastSongId = songId;
       _lastScrolledIndex = -1;
-      return;
     }
-
-    final currentHash = '${song.id}_${song.lyrics.length}_${song.lyricsUrl}';
-    if (_loadedSongId == song.id && _loadedLyricsHash == currentHash) return;
-    _loadedSongId = song.id;
-    _loadedLyricsHash = currentHash;
-    _lastScrolledIndex = -1;
-
-    // 1. Ưu tiên lấy nội dung lời bài hát lưu trực tiếp trong MongoDB (song.lyrics)
-    if (song.lyrics.trim().isNotEmpty) {
-      _isLoadingUrl = false;
-      _rawLyrics = song.lyrics;
-      _parseLyrics(_rawLyrics, totalDuration);
-      return;
-    }
-
-    // 2. Nếu song.lyrics trống nhưng có đường dẫn file .lrc (lyricsUrl), tải về từ URL
-    if (song.lyricsUrl.trim().isNotEmpty) {
-      _isLoadingUrl = true;
-      _rawLyrics = '';
-      _parsedLines = [];
-      _hasSyncedTimestamps = false;
-      _fetchRemoteLyrics(song, totalDuration);
-      return;
-    }
-
-    // 3. Nếu bài hát cũ chưa kịp đồng bộ lyrics từ DB, tạo lời .lrc đồng bộ mặc định theo tên bài hát
-    _isLoadingUrl = false;
-    _rawLyrics = LyricsView.buildFallbackLrc(song.title, song.artist);
-    _parseLyrics(_rawLyrics, totalDuration);
-  }
-
-  Future<void> _fetchRemoteLyrics(
-    Song song,
-    int totalDuration,
-  ) async {
-    final fetched = await ApiService().fetchLyricsFromUrl(song.lyricsUrl);
-    if (!mounted || _loadedSongId != song.id) return;
-    setState(() {
-      _isLoadingUrl = false;
-      _rawLyrics = fetched.trim().isNotEmpty
-          ? fetched
-          : LyricsView.buildFallbackLrc(song.title, song.artist);
-      _parseLyrics(_rawLyrics, totalDuration);
-    });
-  }
-
-  void _parseLyrics(String raw, int totalDuration) {
-    final tagRegex = RegExp(r'\[(\d{1,3}):(\d{1,2}(?:\.\d{1,3})?)\]');
-    final srtRegex = RegExp(
-      r'(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})(?:[.,](\d{1,3}))?\s*-->',
-    );
-    _hasSyncedTimestamps = tagRegex.hasMatch(raw) || srtRegex.hasMatch(raw);
-    _parsedLines = LyricsView.parseRawLyrics(raw, totalDuration);
-  }
-
-  int _findActiveLineIndex(double currentPosition) {
-    return LyricsView.findActiveIndex(_parsedLines, currentPosition);
-  }
-
-  void _scrollToActiveLine(int activeIndex) {
     if (activeIndex < 0 || activeIndex == _lastScrolledIndex) return;
     _lastScrolledIndex = activeIndex;
 
@@ -284,12 +307,13 @@ class _LyricsViewState extends State<LyricsView> {
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
-    final song = player.currentSong;
+    final Song? song = player.currentSong;
+    final lines = player.currentLyricLines;
+    final activeIndex = player.activeLyricIndex;
 
-    _ensureLyricsLoaded(song, player.totalDuration);
-
-    final activeIndex = _findActiveLineIndex(player.currentPosition);
-    _scrollToActiveLine(activeIndex);
+    if (song != null && lines.isNotEmpty) {
+      _scrollToActiveLine(song.id, activeIndex);
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -304,18 +328,19 @@ class _LyricsViewState extends State<LyricsView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Lời bài hát',
+                'Lời bài hát (MongoDB)',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              if (_parsedLines.isNotEmpty)
+              if (lines.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryGreen.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _hasSyncedTimestamps
+                    player.hasSyncedTimestamps
                         ? 'Đồng bộ .LRC/.SRT • Chạm để tua'
                         : 'Tự động cuộn • Chạm để tua',
                     style: const TextStyle(
@@ -327,13 +352,120 @@ class _LyricsViewState extends State<LyricsView> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          // Thanh căn chỉnh lệch nhịp lời bài hát trực tiếp (-0.5s / +0.5s)
+          if (lines.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    player.lyricOffset == 0.0
+                        ? '⏱ Nhịp lời: Chuẩn (0.0s)'
+                        : '⏱ Bù trễ lời: ${player.lyricOffset > 0 ? '+' : ''}${player.lyricOffset.toStringAsFixed(1)}s',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: player.lyricOffset == 0.0
+                          ? AppTheme.textGrey
+                          : AppTheme.primaryGreen,
+                      fontWeight: player.lyricOffset == 0.0
+                          ? FontWeight.normal
+                          : FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => player.adjustLyricOffset(-0.5),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white24),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            '-0.5s (Sớm hơn)',
+                            style:
+                                TextStyle(fontSize: 10, color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                      if (player.lyricOffset != 0.0) ...[
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => player.resetLyricOffset(),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color:
+                                  AppTheme.primaryGreen.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              '0.0s',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppTheme.primaryGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => player.adjustLyricOffset(0.5),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white24),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            '+0.5s (Trễ hơn)',
+                            style:
+                                TextStyle(fontSize: 10, color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
           Expanded(
-            child: _isLoadingUrl
+            child: player.isLoadingLyrics
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: AppTheme.primaryGreen),
+                        SizedBox(height: 10),
+                        Text(
+                          'Đang tải lời bài hát từ MongoDB...',
+                          style: TextStyle(
+                            color: AppTheme.textGrey,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
                   )
-                : _parsedLines.isEmpty
+                : lines.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -347,30 +479,53 @@ class _LyricsViewState extends State<LyricsView> {
                             Text(
                               song == null
                                   ? 'Chưa chọn bài hát'
-                                  : 'Bài hát "${song.title}" hiện chưa có lời bài hát.',
+                                  : 'Bài hát "${song.title}" hiện chưa có lời (.LRC/.SRT) trên MongoDB.',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: AppTheme.textGrey,
                                 fontSize: 14,
                               ),
                             ),
+                            if (song != null) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.primaryGreen,
+                                  side: const BorderSide(
+                                    color: AppTheme.primaryGreen,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    player.refreshCurrentSongFromMongo(),
+                                icon:
+                                    const Icon(Icons.refresh_rounded, size: 16),
+                                label: const Text(
+                                  'Tải lại dữ liệu từ MongoDB',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       )
                     : ListView.builder(
                         controller: _scrollController,
                         itemExtent: _itemExtent,
-                        itemCount: _parsedLines.length,
+                        itemCount: lines.length,
                         itemBuilder: (context, index) {
-                          final line = _parsedLines[index];
+                          final line = lines[index];
                           final isCurrentLine = index == activeIndex;
                           final isPastLine = index < activeIndex;
 
                           return InkWell(
                             borderRadius: BorderRadius.circular(8),
-                            onTap: () => player.seek(line.timeSec),
+                            onTap: () => player.seek(
+                              (line.timeSec + player.lyricOffset)
+                                  .clamp(0.0, player.totalDuration.toDouble()),
+                            ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 6),
                               child: Row(
                                 children: [
                                   SizedBox(
@@ -381,7 +536,8 @@ class _LyricsViewState extends State<LyricsView> {
                                         fontSize: 11,
                                         color: isCurrentLine
                                             ? AppTheme.primaryGreen
-                                            : AppTheme.textGrey.withValues(alpha: 0.5),
+                                            : AppTheme.textGrey
+                                                .withValues(alpha: 0.5),
                                         fontWeight: isCurrentLine
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -390,7 +546,8 @@ class _LyricsViewState extends State<LyricsView> {
                                   ),
                                   Expanded(
                                     child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 220),
+                                      duration:
+                                          const Duration(milliseconds: 220),
                                       style: TextStyle(
                                         fontSize: isCurrentLine ? 18 : 15,
                                         fontWeight: isCurrentLine
@@ -420,4 +577,4 @@ class _LyricsViewState extends State<LyricsView> {
       ),
     );
   }
-}
+}

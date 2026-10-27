@@ -15,6 +15,34 @@ Khi clone từ GitHub về máy khác, các thư mục thư viện (`node_module
 * **Node.js**: Phiên bản `v18.x` hoặc `v20.x` trở lên ([Tải tại đây](https://nodejs.org/)).
 * **Flutter SDK**: Phiên bản `>= 3.0.0` ([Tải tại đây](https://docs.flutter.dev/get-started/install)).
 * **Android Studio**: Đã cài đặt Android SDK, Command-line Tools và tạo sẵn 1 Máy ảo Android (Android Emulator).
+Ver2
+
+---
+
+### 2. Tạo file cấu hình Backend (`backend/.env`)
+> 💡 **Quan trọng**: Git tự động bỏ qua file `.env`. Nếu thiếu file này, Backend sẽ **báo lỗi sập ngay lập tức** khi khởi động.
+
+1. Vào thư mục `backend/`.
+2. Tạo một file tên là `.env` (nằm cùng cấp với `package.json`).
+3. Sao chép nội dung từ `backend/.env.example` hoặc dán cấu hình sau vào:
+
+```env
+PORT=5000
+# Đường dẫn kết nối MongoDB Atlas (Cluster của bạn hoặc dùng chung)
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/music-app?retryWrites=true&w=majority
+
+# Mã bí mật tạo token đăng nhập JWT
+JWT_SECRET=huy_music_super_secret_key_2026
+
+# Cấu hình Cloudinary để tải ảnh bìa và file nhạc (Lấy tại https://cloudinary.com)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+```
+
+---
+
+
 
 ---
 
@@ -36,6 +64,7 @@ CLOUDINARY_API_SECRET=vgkzCjs8Fv_Q6O7IOuDoKVaoHmI
 
 ---
 
+ main
 ## 🚀 THỨ TỰ CÀI ĐẶT VÀ KHỞI CHẠY (TỪ A - Z)
 
 Hãy mở **3 cửa sổ Terminal (hoặc PowerShell) riêng biệt** và chạy đúng thứ tự:
@@ -71,12 +100,19 @@ npm run dev
 * **Tài khoản Admin mặc định:**
   * **Email:** `admin@music.com`
   * **Mật khẩu:** `123456`
+ Ver2
+* **Tính năng:**
+  * Quản lý bài hát: Upload nhạc (`.mp3`), ảnh bìa, file lời đồng bộ (`.lrc`, `.srt`, `.txt`), nghe thử và đồng bộ thời gian thực.
+  * Quản lý nghệ sĩ (`/artists`): Xem danh sách ca sĩ, thay đổi ảnh đại diện chân dung (tải ảnh từ máy lên Cloudinary hoặc dán link ảnh), cập nhật tiểu sử.
+=======
 * **Tính năng:** Upload bài hát (`.mp3`), ảnh bìa, file lời đồng bộ (`.lrc`, `.srt`, `.txt`), nghe thử và đồng bộ thời gian thực.
+ main
 
 ---
 
 ### 🔹 BƯỚC 3: Khởi động Mobile App (Flutter)
 Mở máy ảo Android trong **Android Studio** trước, sau đó:
+Ver2
 
 Mở **Terminal 3**:
 ```powershell
@@ -104,6 +140,35 @@ flutter run
 
 ---
 
+
+
+Mở **Terminal 3**:
+```powershell
+cd mobile
+flutter pub get
+flutter run
+```
+*(Hoặc mở thư mục `mobile` trong Android Studio / VS Code và nhấn nút **Run ▶**).*
+
+---
+
+## 🛠️ TỔNG HỢP CÁC LỖI THƯỜNG GẶP KHI TEST TRÊN THIẾT BỊ KHÁC
+
+### ❌ Lỗi 1: Backend báo lỗi `MongooseError: The MONGO_URI environment variable is not defined`
+* **Nguyên nhân:** Quên chưa tạo file `backend/.env` sau khi clone từ Git.
+* **Cách sửa:** Tạo file `backend/.env` như hướng dẫn ở Mục 2 phía trên.
+
+---
+
+### ❌ Lỗi 2: Backend báo `querySrv ECONNREFUSED` khi kết nối MongoDB Atlas
+* **Nguyên nhân:** DNS của mạng/WiFi chặn truy vấn SRV của MongoDB Atlas.
+* **Cách sửa:**
+  1. Thêm IP máy tính vào mục **Network Access** trên bảng điều khiển [MongoDB Atlas](https://cloud.mongodb.com/) (chọn `Add Current IP Address` hoặc `Allow Access from Anywhere - 0.0.0.0/0`).
+  2. Đổi DNS trên máy tính sang Google DNS (`8.8.8.8` / `8.8.4.4`). *(Trong code `backend/src/config/db.js` đã được tích hợp sẵn ép DNS Google).*
+
+---
+
+ main
 ### ❌ Lỗi 3: App Mobile báo "Không kết nối được tới Backend (http://10.0.2.2:5000/api)"
 * **Cơ chế IP của Mobile App ([`api_service.dart`](file:///c:/Users/MSII/Desktop/New%20folder%20(4)/Music-App-Huy/mobile/lib/services/api_service.dart#L17-L25)):**
   * **Chạy máy ảo Android Emulator:** App tự động gọi `http://10.0.2.2:5000/api` (đây là IP đại diện cho localhost máy tính).
