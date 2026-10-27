@@ -122,19 +122,20 @@ class MainShell extends StatelessWidget {
 
     return Scaffold(
       extendBody: true,
-      body: Column(
+      body: child,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(child: child),
           const MiniPlayer(),
+          _FloatingNavBar(
+            currentIndex: currentIndex,
+            onTap: (index) {
+              if (index == 0) context.go('/home');
+              if (index == 1) context.go('/search');
+              if (index == 2) context.go('/library');
+            },
+          ),
         ],
-      ),
-      bottomNavigationBar: _FloatingNavBar(
-        currentIndex: currentIndex,
-        onTap: (index) {
-          if (index == 0) context.go('/home');
-          if (index == 1) context.go('/search');
-          if (index == 2) context.go('/library');
-        },
       ),
     );
   }

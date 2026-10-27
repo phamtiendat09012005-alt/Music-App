@@ -103,9 +103,10 @@ class _KaraokeScreenState extends State<KaraokeScreen> {
             : '';
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      backgroundColor: AppTheme.backgroundBlack,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF101F17),
+        backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           tooltip: 'Quay lại trình phát',
@@ -145,14 +146,14 @@ class _KaraokeScreenState extends State<KaraokeScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: player.isBeatMode
-                        ? AppTheme.primaryGreen
-                        : AppTheme.cardGrey,
+                    gradient:
+                        player.isBeatMode ? AppTheme.accentGradient : null,
+                    color: player.isBeatMode ? null : AppTheme.cardGrey,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: player.isBeatMode
-                          ? AppTheme.primaryGreen
-                          : Colors.white24,
+                          ? Colors.transparent
+                          : AppTheme.outline,
                     ),
                   ),
                   child: Text(
@@ -171,18 +172,8 @@ class _KaraokeScreenState extends State<KaraokeScreen> {
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF101F17),
-              AppTheme.darkBackground,
-              Color(0xFF0D131A),
-            ],
-          ),
-        ),
+      body: AuroraBackground(
+        tint: const Color(0xFF3B1A6B),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -519,7 +510,7 @@ class _KaraokeScreenState extends State<KaraokeScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: player.isBeatMode
                                     ? AppTheme.primaryGreen
-                                    : const Color(0xFF333333),
+                                    : AppTheme.cardElevated,
                                 foregroundColor: player.isBeatMode
                                     ? Colors.black
                                     : Colors.white,
@@ -962,7 +953,7 @@ class _KaraokeViewState extends State<KaraokeView> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: player.isBeatMode
                         ? AppTheme.primaryGreen
-                        : const Color(0xFF333333),
+                        : AppTheme.cardElevated,
                     foregroundColor:
                         player.isBeatMode ? Colors.black : Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 8),

@@ -94,7 +94,7 @@ class LibraryScreen extends StatelessWidget {
         child: SafeArea(
           bottom: false,
           child: ListView(
-            padding: const EdgeInsets.only(bottom: 120),
+            padding: const EdgeInsets.only(bottom: 155),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),

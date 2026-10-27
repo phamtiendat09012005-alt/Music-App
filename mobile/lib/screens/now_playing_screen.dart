@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/favorite_provider.dart';
 import '../widgets/lyrics_view.dart';
+import '../widgets/song_tile.dart';
 import '../core/theme.dart';
 
 /// Màn hình đang phát: nền mờ theo ảnh bìa, 3 chế độ (Đĩa nhạc / Lời / Karaoke).
@@ -171,6 +172,15 @@ class NowPlayingScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        tooltip: 'Thêm vào Playlist',
+                        icon: const Icon(
+                          Icons.playlist_add_rounded,
+                          color: Colors.white,
+                        ),
+                        onPressed: () =>
+                            SongTile.showAddToPlaylistSheet(context, song),
                       ),
                       IconButton(
                         tooltip: isFav ? 'Bỏ thích' : 'Yêu thích',

@@ -395,7 +395,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             tooltip: 'Đăng xuất',
             icon: const Icon(Icons.logout_rounded, size: 20),
-            onPressed: () => context.go('/login'),
+            onPressed: () async {
+              await ApiService().logout();
+              if (mounted) {
+                context.go('/login');
+              }
+            },
           ),
         ],
       ),
@@ -771,7 +776,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: AppTheme.cardGrey,
                       onRefresh: _fetchSongs,
                       child: ListView(
-                        padding: const EdgeInsets.only(bottom: 120),
+                        padding: const EdgeInsets.only(bottom: 155),
                         children: [
                           _buildHeader(),
                           if (trendingSongs.isNotEmpty)

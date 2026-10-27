@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/theme.dart';
+import '../providers/favorite_provider.dart';
+import '../providers/playlist_provider.dart';
 import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -45,15 +48,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Xử lý lưu hoặc xoá thông tin ghi nhớ khi bấm Đăng nhập
   Future<void> _handleLogin() async {
-    final email = _accountController.text.trim();
+    final rawAccount = _accountController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (rawAccount.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập đầy đủ tài khoản và mật khẩu')),
       );
       return;
     }
+
+    final email =
+        rawAccount.contains('@') ? rawAccount : '$rawAccount@musicapp.local';
 
     setState(() => _isLoading = true);
     try {
@@ -63,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (_rememberPassword) {
-      await _storage.write(key: 'saved_account', value: email);
+      await _storage.write(key: 'saved_account', value: rawAccount);
       await _storage.write(key: 'saved_password', value: password);
       await _storage.write(key: 'remember_me', value: 'true');
     } else {
@@ -73,6 +79,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (mounted) {
+      context.read<FavoriteProvider>().fetchFavorites();
+      context.read<PlaylistProvider>().fetchPlaylists();
       setState(() => _isLoading = false);
       context.go('/home');
     }

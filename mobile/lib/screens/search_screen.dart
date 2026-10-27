@@ -177,7 +177,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 120),
+                            padding: const EdgeInsets.only(bottom: 155),
                             itemCount: _songs.length,
                             itemBuilder: (context, index) => SongTile(
                               song: _songs[index],

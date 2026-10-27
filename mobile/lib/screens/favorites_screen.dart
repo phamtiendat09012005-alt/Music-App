@@ -108,7 +108,7 @@ class FavoritesScreen extends StatelessWidget {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 120),
+                        padding: const EdgeInsets.only(bottom: 155),
                         itemCount: favorites.length,
                         itemBuilder: (context, index) => SongTile(
                           song: favorites[index],

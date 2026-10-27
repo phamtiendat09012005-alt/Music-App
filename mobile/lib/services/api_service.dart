@@ -152,15 +152,40 @@ class ApiService {
         .toList();
   }
 
-  // 9. Tạo Playlist mới trên MongoDB
-  Future<Playlist> createPlaylist(String name) async {
-    final response = await _dio.post('/playlists', data: {'name': name});
+  // 9. Tạo Playlist mới trên MongoDB (có thể kèm danh sách bài hát ban đầu)
+  Future<Playlist> createPlaylist(String name, {List<String>? songIds}) async {
+    final response = await _dio.post('/playlists', data: {
+      'name': name,
+      if (songIds != null && songIds.isNotEmpty) 'songs': songIds,
+    });
     return Playlist.fromJson(Map<String, dynamic>.from(response.data as Map));
   }
 
   // 10. Xoá Playlist trên MongoDB
   Future<void> deletePlaylist(String id) async {
     await _dio.delete('/playlists/$id');
+  }
+
+  // 10b. Thêm bài hát vào Playlist trên MongoDB
+  Future<Playlist?> addSongToPlaylist(String playlistId, String songId) async {
+    final response = await _dio.post(
+      '/playlists/$playlistId/songs',
+      data: {'songId': songId},
+    );
+    if (response.data is Map) {
+      return Playlist.fromJson(Map<String, dynamic>.from(response.data as Map));
+    }
+    return null;
+  }
+
+  // 10c. Xoá bài hát khỏi Playlist trên MongoDB
+  Future<Playlist?> removeSongFromPlaylist(
+      String playlistId, String songId) async {
+    final response = await _dio.delete('/playlists/$playlistId/songs/$songId');
+    if (response.data is Map) {
+      return Playlist.fromJson(Map<String, dynamic>.from(response.data as Map));
+    }
+    return null;
   }
 
   // 11. Tải nội dung file lời bài hát (.lrc) từ URL (dự phòng khi song.lyrics trống nhưng có lyricsUrl)
